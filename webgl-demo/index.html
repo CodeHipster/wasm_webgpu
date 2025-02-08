@@ -1,0 +1,27 @@
+<script src="https://twgljs.org/dist/3.x/twgl.min.js"></script>
+<script id="vshader" type="whatever">
+    uniform mat4 u_matrix;
+    attribute vec4 a_vertex;
+    attribute vec4 a_color;
+    varying vec4 v_color;
+
+    void main() {
+      // Set the size of the point
+      gl_PointSize = length(a_vertex) * 0.1;
+    
+      // multiply each vertex by a matrix.
+      gl_Position = u_matrix * a_vertex;
+
+      // pass the color to the fragment shader
+      v_color = a_color;
+    }    
+</script>
+<script id="fshader" type="whatever">
+precision mediump float;
+varying vec4 v_color;
+void main() {
+    gl_FragColor = v_color;
+}
+</script>
+<canvas id="c" width="400" height="400"></canvas>
+<script src="./demo.js"></script>
