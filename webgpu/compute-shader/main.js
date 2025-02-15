@@ -1,3 +1,5 @@
+import computeShader from "./compute-shader.js";
+
 async function main() {
   const adapter = await navigator.gpu?.requestAdapter();
   const device = await adapter?.requestDevice();
@@ -8,16 +10,7 @@ async function main() {
 
   const module = device.createShaderModule({
     label: 'doubling compute module',
-    code: `
-      @group(0) @binding(0) var<storage, read_write> data: array<f32>;
-
-      @compute @workgroup_size(1) fn computeSomething(
-        @builtin(global_invocation_id) id: vec3u
-      ) {
-        let i = id.x;
-        data[i] = data[i] * 2.0;
-      }
-    `,
+    code: computeShader,
   });
 
   const pipeline = device.createComputePipeline({
