@@ -20,7 +20,7 @@ export default /* wgsl */`
     p.position = 2.0 * p.position - p.prevPosition + gravity * dt * dt;
     p.prevPosition = temp;
 
-    // Apply boundary constraints (keep particles inside a 2x2 box)
+    // Apply boundary constraints (keep particles inside a size 1000 box)
     p.position = clamp(p.position, vec2<f32>(0.0), vec2<f32>(1000.0));
 
     particles[i] = p;
