@@ -11,7 +11,7 @@ export default /* wgsl */`
     let i = id.x;
     
     let dt: f32 = 0.016; // Assume ~60 FPS
-    let gravity: vec2<f32> = vec2<f32>(0.0, -0.098);
+    let gravity: vec2<f32> = vec2<f32>(0.0, -9.8); // accelerate with 10 units per second
     
     var p = particles[i];
     
@@ -21,7 +21,7 @@ export default /* wgsl */`
     p.prevPosition = temp;
 
     // Apply boundary constraints (keep particles inside a 2x2 box)
-    p.position = clamp(p.position, vec2<f32>(-1.0), vec2<f32>(1.0));
+    p.position = clamp(p.position, vec2<f32>(0.0), vec2<f32>(1000.0));
 
     particles[i] = p;
   }

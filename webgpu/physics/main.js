@@ -2,6 +2,11 @@ import particleCompute from "./particle-compute.js";
 import particleShader from "./particle-shader.js";
 import FPSTracker from "./fps.js";
 
+// This is the size of pixels in the canvas
+// the size of the box in which the pixels live
+// and the size of the grid for detecting collisions
+const SIZE = 1000
+
 async function main() {
 
   var fps = new FPSTracker()
@@ -23,9 +28,8 @@ async function main() {
   });
 
   // Set internal resolution
-  const CANVAS_SIZE = 1000;
-  canvas.width = CANVAS_SIZE;
-  canvas.height = CANVAS_SIZE;
+  canvas.width = SIZE;
+  canvas.height = SIZE;
 
   // const particleCount = 8_388_608; // max buffer size
   // const particleCount = 1024 * 1024 * 4 -1; // max for compute dispatch groups
@@ -41,8 +45,9 @@ async function main() {
   // Initialize particle positions
   let particleData = new Float32Array(particleCount * 2);
   for (let i = 0; i < particleCount; i++) {
-    var x = Math.random() * 2 - 1 // x in [-1,1]
-    var y = Math.random() * 2 - 1 // y in [-1,1]
+    var x = Math.random() * SIZE // x in [0,SIZE]
+    var y = Math.random() * SIZE // y in [0,SIZE]
+    // Store as flat data in an array
     // position
     particleData[i * 4] = x;
     particleData[i * 4 + 1] = y;
@@ -86,14 +91,13 @@ async function main() {
       entryPoint: "fs_main",
       targets: [{ format: presentationFormat }]
     },
-    primitive: { topology: "point-list" }
+    primitive: { topology: "point-list" } // Telling webgpu that our vertexes are points and don't need triangle interpolation for the fragment shader
   });
 
   const renderBindGroup = device.createBindGroup({
     layout: renderPipeline.getBindGroupLayout(0),
     entries: [{ binding: 0, resource: { buffer: particleBuffer } }]
   });
-
 
   function renderLoop(timestamp) {
     fps.update(timestamp)
@@ -104,7 +108,7 @@ async function main() {
       const pass = commandEncoder.beginComputePass();
       pass.setPipeline(computePipeline);
       pass.setBindGroup(0, computeBindGroup);
-      pass.dispatchWorkgroups(particleCount / 64);
+      pass.dispatchWorkgroups(particleCount / 64 +1);
       pass.end();
     }
 

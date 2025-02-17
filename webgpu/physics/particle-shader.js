@@ -9,7 +9,8 @@ export default /*wgsl*/`
   @vertex
   fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
       var out: VertexOutput;
-      out.position = vec4<f32>(particles[index], 0.0, 1.0); // Normalize to clip space
+      var pos = (particles[index] / 500) - vec2f(1.0, 1.0); // Scale to clip space
+      out.position = vec4<f32>(pos, 0.0, 1.0); // Normalize to clip space
       out.color = vec4<f32>(1.0, 1.0, 1.0, 1.0); // White
       return out;
   }

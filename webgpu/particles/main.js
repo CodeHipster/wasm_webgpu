@@ -28,8 +28,8 @@ async function main() {
   canvas.height = CANVAS_SIZE;
 
   // const particleCount = 8_388_608; // max buffer size
-  // const particleCount = 1024 * 1024 * 4 -1; // max for 1 compute dispatch group
-  const particleCount = 100
+  const particleCount = 1024 * 1024 * 4 -1; // max for 1 compute dispatch group
+  // const particleCount = 1000
   const bufferSize = particleCount * 2 * 4 * 2; // 2 floats for x,y, for pos and previous pos
 
   // Create particle buffer (shared between compute & render)
