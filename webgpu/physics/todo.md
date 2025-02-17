@@ -5,7 +5,7 @@ verlet integration between particles and the bounding box
 
 ## Steps
 
-### 1000 x 1000 pixels
+### 1000 x 1000 pixels - DONE
 The canvas will be 1000x1000 pixels.
 The box in which the particles live will be 1000x1000
 This means we will have to do a translation in the vertex shader to map it to -1, 1

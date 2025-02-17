@@ -5,7 +5,7 @@ import FPSTracker from "./fps.js";
 // This is the size of pixels in the canvas
 // the size of the box in which the pixels live
 // and the size of the grid for detecting collisions
-const SIZE = 1000
+const SIZE = 100
 
 async function main() {
 
@@ -31,10 +31,31 @@ async function main() {
   canvas.width = SIZE;
   canvas.height = SIZE;
 
+  // Create uniform with global variables
+  const globalsBufferSize =
+    2 * 4 + // gravity is 2 32bit floats (4bytes each)
+    4 + // size is a float
+    4;  // half size is a float
+  const globalsBuffer = device.createBuffer({
+    size: globalsBufferSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  // create a typedarray to hold the values for the uniforms in JavaScript
+  const globals = new Float32Array(globalsBufferSize / 4);
+  const gravityOffset = 0;
+  const sizeOffset = 2;
+
+  // set the values in the correct place for the uniform struct in wgsl.
+  globals.set([0.0, -9.8], gravityOffset)
+  globals.set([SIZE, SIZE / 2], sizeOffset)
+
   // const particleCount = 8_388_608; // max buffer size
   // const particleCount = 1024 * 1024 * 4 -1; // max for compute dispatch groups
   const particleCount = 1024
   const bufferSize = particleCount * 2 * 4 * 2; // 2 floats for x,y, for pos and previous pos
+
+  // queue writing globals to the buffer
+  device.queue.writeBuffer(globalsBuffer, 0, globals);
 
   // Create particle buffer (shared between compute & render)
   const particleBuffer = device.createBuffer({
@@ -75,7 +96,9 @@ async function main() {
 
   const computeBindGroup = device.createBindGroup({
     layout: computePipeline.getBindGroupLayout(0),
-    entries: [{ binding: 0, resource: { buffer: particleBuffer } }]
+    entries: [
+      { binding: 0, resource: { buffer: particleBuffer } },
+      { binding: 1, resource: { buffer: globalsBuffer } }]
   });
 
   // Render pipeline
@@ -96,7 +119,9 @@ async function main() {
 
   const renderBindGroup = device.createBindGroup({
     layout: renderPipeline.getBindGroupLayout(0),
-    entries: [{ binding: 0, resource: { buffer: particleBuffer } }]
+    entries: [
+      { binding: 0, resource: { buffer: particleBuffer } },
+      { binding: 1, resource: { buffer: globalsBuffer } }]
   });
 
   function renderLoop(timestamp) {
@@ -108,7 +133,7 @@ async function main() {
       const pass = commandEncoder.beginComputePass();
       pass.setPipeline(computePipeline);
       pass.setBindGroup(0, computeBindGroup);
-      pass.dispatchWorkgroups(particleCount / 64 +1);
+      pass.dispatchWorkgroups(particleCount / 64 + 1);
       pass.end();
     }
 
