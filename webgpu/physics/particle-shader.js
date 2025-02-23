@@ -1,13 +1,15 @@
 export default /*wgsl*/`
   struct GlobalVars {
-    gravity: vec2f,
-    size: f32,
-    halfSize: f32,
+    gravity: vec2i, // (x,y) acceleration
+    min: i32,
+    max: i32,
+    physics_scale: i32, // for scaling down to grid size
+    render_scale: i32, // for scaling down to clip_space
   };
 
   struct Particle {
-    position: vec2<f32>,
-    prevPosition: vec2<f32>,
+    position: vec2<i32>,
+    prev_position: vec2<i32>,
   };
 
   @group(0) @binding(0) var<storage, read> particles: array<Particle>;
@@ -21,8 +23,10 @@ export default /*wgsl*/`
   @vertex
   fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
       var out: VertexOutput;
-      var pos = (particles[index].position / globals.halfSize) - vec2f(1.0, 1.0); // Scale to clip space [-1,1]
-      out.position = vec4<f32>(pos, 0.0, 1.0); // Normalize to clip space
+      let pos = particles[index].position; 
+      // Scale to clip space [-1,1]
+      let f_pos = vec2f(f32(pos.x), f32(pos.y)) / f32(globals.render_scale); // losing some precision here, but that should not affect where the particle ends up on screen too much.
+      out.position = vec4<f32>(f_pos, 0.0, 1.0); // Normalize to clip space
       out.color = vec4<f32>(1.0, 1.0, 1.0, 1.0); // White
       return out;
   }

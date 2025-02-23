@@ -11,10 +11,15 @@ The box in which the particles live will be 1000x1000
 This means we will have to do a translation in the vertex shader to map it to -1, 1
 
 ### integer values for pixel positions
-since we have a max value of 1000 and a min of 1000. we can scale the positions to be integer values
+since we have a max value of 1000 and a min of 0. we can scale the positions to be integer values
 This will give us the benefit to do atomic adds on position if multiple particles exert force at the same time.
 
 u32 max: 4_294_967_295, so we can have the position between 100_000 & 4.1mil. (leaving a bit of space for particles to move outside of the clamp area?)
+
+so scale is: 4_000_000 / SIZE. e.g. 4_000
+position is: (pos - 100_000) / scale. e.g. (1_700_000 - 100_000) / 4_000 = 400
+scaled position is: (pos * scale) + 100_000
+
 
 ### sort pixels into grid
 
@@ -34,5 +39,7 @@ check for collision with the 9 cells around. using the previously constructed gr
 do calculations to determine new position based from forces of other particles & gravity
 
 
-
+### detect refreshrate of browser instead of assuming 60
+Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.
+Maybe round off to nearest standard. 60/90/120/144 etc
 

@@ -7,6 +7,10 @@ import FPSTracker from "./fps.js";
 // and the size of the grid for detecting collisions
 const SIZE = 100
 
+// const PARTICLE_COUNT = 8_388_608; // max buffer size
+// const PARTICLE_COUNT = 1024 * 1024 * 4 -1; // max for compute dispatch groups
+const PARTICLE_COUNT = 1
+
 async function main() {
 
   var fps = new FPSTracker()
@@ -31,43 +35,49 @@ async function main() {
   canvas.width = SIZE;
   canvas.height = SIZE;
 
+  // scaling to be able to use only i32 instead of floats.
+  // This will give a 286_000_000 buffer before they over/underflow
+  // const range = 4_000_000_000, close to max u32
+  const range = Math.pow(2, 23) // within the float precision scale
+  const physicsScale = range / SIZE // the size of a pixel
+  const renderScale = range / 2 // to scale position back into clip space (-1,1)
+  const min = range / -2
+  const max = range / 2
+
   // Create uniform with global variables
   const globalsBufferSize =
-    2 * 4 + // gravity is 2 32bit floats (4bytes each)
-    4 + // size is a float
-    4;  // half size is a float
+    2 * 4 + // gravity is 2 i32 (4bytes each)
+    2 * 4 + // min, max are i32
+    2 * 4 // scales are i32
+    ;
   const globalsBuffer = device.createBuffer({
     size: globalsBufferSize,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
   // create a typedarray to hold the values for the uniforms in JavaScript
-  const globals = new Float32Array(globalsBufferSize / 4);
-  const gravityOffset = 0;
-  const sizeOffset = 2;
+  const globals = new Int32Array(globalsBufferSize / 4);
 
   // set the values in the correct place for the uniform struct in wgsl.
-  globals.set([0.0, -9.8], gravityOffset)
-  globals.set([SIZE, SIZE / 2], sizeOffset)
-
-  // const particleCount = 8_388_608; // max buffer size
-  // const particleCount = 1024 * 1024 * 4 -1; // max for compute dispatch groups
-  const particleCount = 1024
-  const bufferSize = particleCount * 2 * 4 * 2; // 2 floats for x,y, for pos and previous pos
+  globals.set([0, -10 * physicsScale], 0) // gravity
+  globals.set([min, max], 2) // min and max position bounds
+  globals.set([physicsScale, renderScale], 4) // scale
+  console.log(globals)
 
   // queue writing globals to the buffer
   device.queue.writeBuffer(globalsBuffer, 0, globals);
 
   // Create particle buffer (shared between compute & render)
+  const bufferSize = PARTICLE_COUNT * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
   const particleBuffer = device.createBuffer({
     size: bufferSize,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
   });
 
   // Initialize particle positions
-  let particleData = new Float32Array(particleCount * 2);
-  for (let i = 0; i < particleCount; i++) {
-    var x = Math.random() * SIZE // x in [0,SIZE]
-    var y = Math.random() * SIZE // y in [0,SIZE]
+  let particleData = new Float32Array(PARTICLE_COUNT * 4);
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    var x = Math.random() * range - max; // x in [min, max]
+    var y = Math.random() * range - max; // y in [min, max]
     // Store as flat data in an array
     // position
     particleData[i * 4] = x;
@@ -76,6 +86,7 @@ async function main() {
     particleData[i * 4 + 2] = x;
     particleData[i * 4 + 3] = y;
   }
+  console.log("x: "+particleData[0]/ physicsScale, "y: " + particleData[1]/ physicsScale)
   device.queue.writeBuffer(particleBuffer, 0, particleData);
 
   const computeModule = device.createShaderModule({
@@ -107,7 +118,8 @@ async function main() {
     vertex: {
       module: renderModule,
       entryPoint: "vs_main",
-      buffers: [{ arrayStride: 8, attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }] }]
+      //arrayStride=bytes to skip per step , attributes: [{ shaderLocation=nr of buffer to use, offset=start pos in the buffer, format=format of the data in the buffer }]
+      // buffers: [{ arrayStride: 8, attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }] }] // Do we actually need this? We could use it to directly get the particles as an argument to the vertex shader.
     },
     fragment: {
       module: renderModule,
@@ -133,7 +145,7 @@ async function main() {
       const pass = commandEncoder.beginComputePass();
       pass.setPipeline(computePipeline);
       pass.setBindGroup(0, computeBindGroup);
-      pass.dispatchWorkgroups(particleCount / 64 + 1);
+      pass.dispatchWorkgroups(PARTICLE_COUNT / 64 + 1);
       pass.end();
     }
 
@@ -152,7 +164,7 @@ async function main() {
       pass.setPipeline(renderPipeline);
       pass.setBindGroup(0, renderBindGroup);
       pass.setVertexBuffer(0, particleBuffer);
-      pass.draw(particleCount);
+      pass.draw(PARTICLE_COUNT);
       pass.end();
     }
 
