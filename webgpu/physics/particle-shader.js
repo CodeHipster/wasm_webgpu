@@ -25,7 +25,7 @@ export default /*wgsl*/`
       var out: VertexOutput;
       let pos = particles[index].position; 
       // Scale to clip space [-1,1]
-      let f_pos = vec2f(f32(pos.x), f32(pos.y)) / f32(globals.render_scale); // losing some precision here, but that should not affect where the particle ends up on screen too much.
+      let f_pos = vec2f(f32(pos.x), f32(pos.y)) / f32(globals.render_scale); //possibly losing some precision here, but that should not affect where the particle ends up on screen too much.
       out.position = vec4<f32>(f_pos, 0.0, 1.0); // Normalize to clip space
       out.color = vec4<f32>(1.0, 1.0, 1.0, 1.0); // White
       return out;

@@ -37,7 +37,7 @@ async function main() {
 
   // scaling to be able to use only i32 instead of floats.
   // This will give a 286_000_000 buffer before they over/underflow
-  // const range = 4_000_000_000, close to max u32
+  // const range = 4_000_000_000 // close to max u32
   const range = Math.pow(2, 23) // within the float precision scale
   const physicsScale = range / SIZE // the size of a pixel
   const renderScale = range / 2 // to scale position back into clip space (-1,1)
@@ -51,6 +51,7 @@ async function main() {
     2 * 4 // scales are i32
     ;
   const globalsBuffer = device.createBuffer({
+    label: 'globals buffer',
     size: globalsBufferSize,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
@@ -69,8 +70,16 @@ async function main() {
   // Create particle buffer (shared between compute & render)
   const bufferSize = PARTICLE_COUNT * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
   const particleBuffer = device.createBuffer({
+    label: 'particle buffer',
     size: bufferSize,
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+  });
+
+  // create a buffer on the GPU to get a copy of the results
+  const debugBuffer = device.createBuffer({
+    label: 'debug buffer',
+    size: bufferSize,
+    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
   // Initialize particle positions
@@ -136,7 +145,7 @@ async function main() {
       { binding: 1, resource: { buffer: globalsBuffer } }]
   });
 
-  function renderLoop(timestamp) {
+  async function renderLoop(timestamp) {
     fps.update(timestamp)
     const commandEncoder = device.createCommandEncoder();
 
@@ -148,6 +157,10 @@ async function main() {
       pass.dispatchWorkgroups(PARTICLE_COUNT / 64 + 1);
       pass.end();
     }
+    
+    // For debugging particle positions
+    // Encode a command to copy the results to a mappable buffer.
+    commandEncoder.copyBufferToBuffer(particleBuffer, 0, debugBuffer, 0, debugBuffer.size);
 
     // Render Pass (Draw Particles)
     {
@@ -169,6 +182,14 @@ async function main() {
     }
 
     device.queue.submit([commandEncoder.finish()]);
+
+      // Read the results
+    await debugBuffer.mapAsync(GPUMapMode.READ);
+    const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
+    debugBuffer.unmap(); // give control back to gpu
+
+    console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
+    // console.log("x: "+result[1]/ physicsScale, "y: " + result[2]/ physicsScale)
     requestAnimationFrame(renderLoop);
   }
 
