@@ -10,7 +10,7 @@ The canvas will be 1000x1000 pixels.
 The box in which the particles live will be 1000x1000
 This means we will have to do a translation in the vertex shader to map it to -1, 1
 
-### integer values for pixel positions
+### integer values for pixel positions DONE
 since we have a max value of 1000 and a min of 0. we can scale the positions to be integer values
 This will give us the benefit to do atomic adds on position if multiple particles exert force at the same time.
 

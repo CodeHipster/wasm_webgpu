@@ -5,11 +5,11 @@ import FPSTracker from "./fps.js";
 // This is the size of pixels in the canvas
 // the size of the box in which the pixels live
 // and the size of the grid for detecting collisions
-const SIZE = 100
+const SIZE = 500
 
 // const PARTICLE_COUNT = 8_388_608; // max buffer size
-// const PARTICLE_COUNT = 1024 * 1024 * 4 -1; // max for compute dispatch groups
-const PARTICLE_COUNT = 1
+// const PARTICLE_COUNT = 1024 * 1023 * 4 -1; // max for compute dispatch groups
+const PARTICLE_COUNT = 50000
 
 async function main() {
 
@@ -37,8 +37,8 @@ async function main() {
 
   // scaling to be able to use only i32 instead of floats.
   // This will give a 286_000_000 buffer before they over/underflow
-  // const range = 4_000_000_000 // close to max u32
-  const range = Math.pow(2, 23) // within the float precision scale
+  const range = 4_000_000_000 // close to max u32
+  // const range = Math.pow(2, 23) // within the float precision scale
   const physicsScale = range / SIZE // the size of a pixel
   const renderScale = range / 2 // to scale position back into clip space (-1,1)
   const min = range / -2
@@ -83,7 +83,7 @@ async function main() {
   });
 
   // Initialize particle positions
-  let particleData = new Float32Array(PARTICLE_COUNT * 4);
+  let particleData = new Int32Array(PARTICLE_COUNT * 4);
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     var x = Math.random() * range - max; // x in [min, max]
     var y = Math.random() * range - max; // y in [min, max]
@@ -95,7 +95,7 @@ async function main() {
     particleData[i * 4 + 2] = x;
     particleData[i * 4 + 3] = y;
   }
-  console.log("x: "+particleData[0]/ physicsScale, "y: " + particleData[1]/ physicsScale)
+  // console.log("x: "+particleData[0]/ physicsScale, "y: " + particleData[1]/ physicsScale)
   device.queue.writeBuffer(particleBuffer, 0, particleData);
 
   const computeModule = device.createShaderModule({
@@ -183,13 +183,12 @@ async function main() {
 
     device.queue.submit([commandEncoder.finish()]);
 
-      // Read the results
-    await debugBuffer.mapAsync(GPUMapMode.READ);
-    const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
-    debugBuffer.unmap(); // give control back to gpu
+      // Read the debug buffer
+    // await debugBuffer.mapAsync(GPUMapMode.READ);
+    // const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
+    // debugBuffer.unmap(); // give control back to gpu
+    // console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
 
-    console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
-    // console.log("x: "+result[1]/ physicsScale, "y: " + result[2]/ physicsScale)
     requestAnimationFrame(renderLoop);
   }
 

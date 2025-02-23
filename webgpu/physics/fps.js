@@ -20,7 +20,7 @@ export default class FPSTracker {
       this.fps = this.frameCount;
       this.frameCount = 0;
       this.lastFpsUpdate = timestamp;
-      // console.log(this.fps)
+      console.log(this.fps)
     }
   }
 
