@@ -5,6 +5,8 @@ export default /* wgsl */`
     max: i32,
     physics_scale: i32, // for scaling down to grid size
     rander_scale: i32, // for scaling down to clip_space
+    sps_2: i32,
+    padding: i32, // buffer must be multiple of 8 bytes
   };
 
   struct Particle {
@@ -23,7 +25,7 @@ export default /* wgsl */`
     
     // Verlet integration step
     let temp = p.position;
-    p.position = p.position + (p.position - p.prev_position) + (globals.gravity / 3600); // 3600 = 60fps * 60fps
+    p.position = p.position + (p.position - p.prev_position) + (globals.gravity / globals.sps_2); // gravity(in seconds) multiplied by time passed^2 in seconds. (or devide by steps per second squared to stay in integers)
     p.prev_position = temp;
 
     // Apply boundary constraints (keep particles inside a the box)

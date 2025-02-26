@@ -14,8 +14,10 @@ export default class Engine {
     const renderScale = range / 2; // to scale position back into clip space (-1,1)
     const min = range / -2;
     const max = range / 2;
+    this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
+    const stepsPerSecondSquared = this.stepsPerSecond*this.stepsPerSecond 
 
-    const globalsBuffer = this._globalsBuffer(physicsScale, renderScale, min, max);
+    const globalsBuffer = this._globalsBuffer(physicsScale, renderScale, min, max, stepsPerSecondSquared);
     this.particleBuffer = this._particleBuffer(range, max);
     this.debugBuffer = this._debugBuffer(this.particleBuffer);
 
@@ -26,9 +28,7 @@ export default class Engine {
   }
 
   start() {
-    // TODO make this configurable
-    const fps = 60
-    setInterval(this.physicsLoop, 1000/60)
+    setInterval(this.physicsLoop, 1000/this.stepsPerSecond)
   }
 
   physicsLoop = () =>{
@@ -175,12 +175,14 @@ export default class Engine {
     });
   }
 
-  _globalsBuffer(physicsScale, renderScale, min, max) {
+  _globalsBuffer(physicsScale, renderScale, min, max, stepsPerSecondSquared) {
     // Create uniform with global variables
     const globalsBufferSize =
       2 * 4 + // gravity is 2 i32 (4bytes each)
       2 * 4 + // min, max are i32
-      2 * 4 // scales are i32
+      2 * 4 +// scales are i32
+      4 + // steps per second
+      4 // padding
       ;
     const globalsBuffer = this.device.createBuffer({
       label: 'globals buffer',
@@ -194,6 +196,7 @@ export default class Engine {
     globals.set([0, -10 * physicsScale], 0) // gravity
     globals.set([min, max], 2) // min and max position bounds
     globals.set([physicsScale, renderScale], 4) // scale
+    globals.set([stepsPerSecondSquared], 6) 
     console.log(globals)
 
     // queue writing globals to the buffer
