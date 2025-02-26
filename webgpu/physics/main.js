@@ -1,9 +1,6 @@
-import particleCompute from "./particle-compute.js";
-import particleShader from "./particle-shader.js";
 import FPSTracker from "./fps.js";
 import setupCanvas from "./canvas.js";
 import setupDevice from "./device.js";
-import random from "./engine/particle-generator.js";
 import Engine from "./engine/engine.js";
 
 // This is the size of pixels in the canvas
@@ -25,6 +22,8 @@ async function main() {
 
   const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE)
 
+  engine.start();
+  
   async function renderLoop(timestamp) {
     fps.update(timestamp)
     engine.render(context)

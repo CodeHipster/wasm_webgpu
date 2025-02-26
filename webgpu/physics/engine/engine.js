@@ -17,7 +17,7 @@ export default class Engine {
 
     const globalsBuffer = this._globalsBuffer(physicsScale, renderScale, min, max);
     this.particleBuffer = this._particleBuffer(range, max);
-    this.debugBuffer = this._debugBuffer();
+    this.debugBuffer = this._debugBuffer(this.particleBuffer);
 
     this.computePipeline = this._computePipeline()
     this.computeBindGroup = this._computeBindGroup(globalsBuffer, this.particleBuffer, this.computePipeline);
@@ -25,12 +25,14 @@ export default class Engine {
     this.renderBindGroup = this._renderBindGroup(globalsBuffer, this.particleBuffer, this.renderPipeline);
   }
 
-  physics() {
-
+  start() {
+    // TODO make this configurable
+    const fps = 60
+    setInterval(this.physicsLoop, 1000/60)
   }
 
-  // TODO: split render and compute passes
-  render(context) {
+  physicsLoop = () =>{
+      
     const commandEncoder = this.device.createCommandEncoder();
 
     // Compute Pass (Physics Update)
@@ -44,7 +46,20 @@ export default class Engine {
 
     // For debugging particle positions
     // Encode a command to copy the results to a mappable buffer.
-    commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
+    // commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
+
+    this.device.queue.submit([commandEncoder.finish()]);
+    
+      // Read the debug buffer
+    // await debugBuffer.mapAsync(GPUMapMode.READ);
+    // const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
+    // debugBuffer.unmap(); // give control back to gpu
+    // console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
+    
+  }
+
+  render(context) {
+    const commandEncoder = this.device.createCommandEncoder();
 
     // Render Pass (Draw Particles)
     {
@@ -67,11 +82,6 @@ export default class Engine {
 
     this.device.queue.submit([commandEncoder.finish()]);
     
-      // Read the debug buffer
-    // await debugBuffer.mapAsync(GPUMapMode.READ);
-    // const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
-    // debugBuffer.unmap(); // give control back to gpu
-    // console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
   }
 
   _computePipeline() {
@@ -155,12 +165,12 @@ export default class Engine {
     return particleBuffer;
   }
 
-  _debugBuffer() {
+  _debugBuffer(particleBuffer) {
     // create a buffer on the GPU to get a copy of the results
     const bufferSize = this.particleCount * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
     return this.device.createBuffer({
       label: 'debug buffer',
-      size: bufferSize, // TODO: base this on particle buffer size.
+      size: particleBuffer.size,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
