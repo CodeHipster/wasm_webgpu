@@ -1,4 +1,5 @@
-import particleComputeWGSL from "./shader/particle-compute.js";
+import particleGravityWGSL from "./shader/particle-gravity.js";
+import gridSortWGSL from "./shader/grid-sort-shader.js";
 import particleShaderWGSL from "./shader/particle-shader.js";
 
 export default class Engine {
@@ -17,12 +18,12 @@ export default class Engine {
     this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
     const stepsPerSecondSquared = this.stepsPerSecond*this.stepsPerSecond 
 
-    const globalsBuffer = this._globalsBuffer(physicsScale, renderScale, min, max, stepsPerSecondSquared);
+    const globalsBuffer = this._globalsBuffer(size, physicsScale, renderScale, min, max, stepsPerSecondSquared);
     this.particleBuffer = this._particleBuffer(range, max);
     this.debugBuffer = this._debugBuffer(this.particleBuffer);
 
-    this.computePipeline = this._computePipeline()
-    this.computeBindGroup = this._computeBindGroup(globalsBuffer, this.particleBuffer, this.computePipeline);
+    this.gravityPipeline = this._gravityPipeline()
+    this.computeBindGroup = this._gravityBindGroup(globalsBuffer, this.particleBuffer, this.gravityPipeline);
     this.renderPipeline = this._renderPipeline(textureFormat);
     this.renderBindGroup = this._renderBindGroup(globalsBuffer, this.particleBuffer, this.renderPipeline);
   }
@@ -32,13 +33,12 @@ export default class Engine {
   }
 
   physicsLoop = () =>{
-      
     const commandEncoder = this.device.createCommandEncoder();
 
     // Compute Pass (Physics Update)
     {
       const pass = commandEncoder.beginComputePass();
-      pass.setPipeline(this.computePipeline);
+      pass.setPipeline(this.gravityPipeline);
       pass.setBindGroup(0, this.computeBindGroup);
       pass.dispatchWorkgroups(this.particleCount / 64 + 1);
       pass.end();
@@ -84,22 +84,22 @@ export default class Engine {
     
   }
 
-  _computePipeline() {
-    const computeModule = this.device.createShaderModule({
-      label: 'particle-compute.js',
-      code: particleComputeWGSL,
+  _gravityPipeline() {
+    const gravityModule = this.device.createShaderModule({
+      label: 'particle-gravity.js',
+      code: particleGravityWGSL,
     });
 
     // Compute pipeline
     return this.device.createComputePipeline({
       layout: "auto",
-      compute: { module: computeModule, entryPoint: "main" }
+      compute: { module: gravityModule, entryPoint: "main" }
     });
   }
 
-  _computeBindGroup(globalsBuffer, particleBuffer, computePipeline) {
+  _gravityBindGroup(globalsBuffer, particleBuffer, gravityPipeline) {
     return this.device.createBindGroup({
-      layout: computePipeline.getBindGroupLayout(0),
+      layout: gravityPipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
         { binding: 1, resource: { buffer: globalsBuffer } }]
@@ -175,14 +175,14 @@ export default class Engine {
     });
   }
 
-  _globalsBuffer(physicsScale, renderScale, min, max, stepsPerSecondSquared) {
+  _globalsBuffer(size, physicsScale, renderScale, min, max, stepsPerSecondSquared) {
     // Create uniform with global variables
     const globalsBufferSize =
       2 * 4 + // gravity is 2 i32 (4bytes each)
       2 * 4 + // min, max are i32
       2 * 4 +// scales are i32
       4 + // steps per second
-      4 // padding
+      4 // Size
       ;
     const globalsBuffer = this.device.createBuffer({
       label: 'globals buffer',
@@ -197,6 +197,7 @@ export default class Engine {
     globals.set([min, max], 2) // min and max position bounds
     globals.set([physicsScale, renderScale], 4) // scale
     globals.set([stepsPerSecondSquared], 6) 
+    globals.set([size], 7) 
     console.log(globals)
 
     // queue writing globals to the buffer

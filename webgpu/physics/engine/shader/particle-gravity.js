@@ -5,8 +5,8 @@ export default /* wgsl */`
     max: i32,
     physics_scale: i32, // for scaling down to grid size
     rander_scale: i32, // for scaling down to clip_space
-    sps_2: i32,
-    padding: i32, // buffer must be multiple of 8 bytes
+    sps_2: i32, // steps per second squared
+    size: i32, // size of the simulation
   };
 
   struct Particle {

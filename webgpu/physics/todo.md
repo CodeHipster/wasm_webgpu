@@ -20,7 +20,6 @@ so scale is: 4_000_000 / SIZE. e.g. 4_000
 position is: (pos - 100_000) / scale. e.g. (1_700_000 - 100_000) / 4_000 = 400
 scaled position is: (pos * scale) + 100_000
 
-
 ### sort pixels into grid
 
 grid = 1000x1000
