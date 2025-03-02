@@ -1,5 +1,5 @@
 import particleGravityWGSL from "./shader/particle-gravity.js";
-import gridSortWGSL from "./shader/grid-sort-shader.js";
+import gridSortWGSL from "./shader/grid-sort.js";
 import particleShaderWGSL from "./shader/particle-shader.js";
 
 export default class Engine {
@@ -26,6 +26,11 @@ export default class Engine {
     this.computeBindGroup = this._gravityBindGroup(globalsBuffer, this.particleBuffer, this.gravityPipeline);
     this.renderPipeline = this._renderPipeline(textureFormat);
     this.renderBindGroup = this._renderBindGroup(globalsBuffer, this.particleBuffer, this.renderPipeline);
+
+    this.gridBuffer = this._gridBuffer(size, 30)
+    this.gridCountBuffer = this._gridCountBuffer(size)
+    this.sortPipeline = this._sortPipeline()
+    this.sortBindGroup = this._sortBindGroup(globalsBuffer, this.particleBuffer, this.gridBuffer, this.gridCountBuffer, this.sortPipeline);
   }
 
   start() {
@@ -35,7 +40,7 @@ export default class Engine {
   physicsLoop = () =>{
     const commandEncoder = this.device.createCommandEncoder();
 
-    // Compute Pass (Physics Update)
+    // Gravity pass 
     {
       const pass = commandEncoder.beginComputePass();
       pass.setPipeline(this.gravityPipeline);
@@ -47,6 +52,15 @@ export default class Engine {
     // For debugging particle positions
     // Encode a command to copy the results to a mappable buffer.
     // commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
+
+    // Grid sort pass
+    {
+      const pass = commandEncoder.beginComputePass();
+      pass.setPipeline(this.sortPipeline);
+      pass.setBindGroup(0, this.sortBindGroup);
+      pass.dispatchWorkgroups(this.particleCount / 64 + 1);
+      pass.end();
+    }
 
     this.device.queue.submit([commandEncoder.finish()]);
     
@@ -90,7 +104,6 @@ export default class Engine {
       code: particleGravityWGSL,
     });
 
-    // Compute pipeline
     return this.device.createComputePipeline({
       layout: "auto",
       compute: { module: gravityModule, entryPoint: "main" }
@@ -106,13 +119,36 @@ export default class Engine {
     });
   }
 
+  _sortPipeline() {
+    const module = this.device.createShaderModule({
+      label: 'grid-sort.js',
+      code: gridSortWGSL,
+    });
+
+    return this.device.createComputePipeline({
+      layout: "auto",
+      compute: { module: module, entryPoint: "main" }
+    });
+  }
+
+  _sortBindGroup(globalsBuffer, particleBuffer, grid, gridCount, pipeline) {
+    return this.device.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: globalsBuffer } },
+        { binding: 2, resource: { buffer: grid } },
+        { binding: 3, resource: { buffer: gridCount } },
+      ]
+    });
+  }
+
   _renderPipeline(textureFormat) {
     const renderModule = this.device.createShaderModule({
       label: 'particle-shader.js',
       code: particleShaderWGSL,
     });
 
-    // Render pipeline
     return this.device.createRenderPipeline({
       layout: "auto",
       vertex: {
@@ -204,6 +240,25 @@ export default class Engine {
     this.device.queue.writeBuffer(globalsBuffer, 0, globals);
 
     return globalsBuffer;
+  }
+
+  // TODO: particles per cell in global var.
+  // stores indexes to particles per cell
+  _gridBuffer(size, particlesPerCell){
+    return this.device.createBuffer({
+      label: 'grid buffer',
+      size: 4 * size * size * particlesPerCell,
+      usage: GPUBufferUsage.STORAGE,
+    });
+  }
+
+  // stores the nr of particles in a given cell as u32
+  _gridCountBuffer(size){
+    return this.device.createBuffer({
+      label: 'gridCount buffer',
+      size: 4 * size * size,
+      usage: GPUBufferUsage.STORAGE,
+    });
   }
 
 }
