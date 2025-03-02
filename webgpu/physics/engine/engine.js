@@ -5,6 +5,7 @@ import particleShaderWGSL from "./shader/particle-shader.js";
 export default class Engine {
 
   constructor(device, textureFormat, particleCount, size) {
+    this.size = size
     this.device = device;
     this.particleCount = particleCount;
     // scaling to be able to use only i32 instead of floats.
@@ -12,15 +13,16 @@ export default class Engine {
     const range = 4_000_000_000; // close to max u32
     // const range = Math.pow(2, 23) // within the float precision scale
     const physicsScale = range / size; // the size of a pixel
+    this.physicsScale = physicsScale;
     const renderScale = range / 2; // to scale position back into clip space (-1,1)
     const min = range / -2;
     const max = range / 2;
-    this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
-    const stepsPerSecondSquared = this.stepsPerSecond*this.stepsPerSecond 
+    this.stepsPerSecond = 30 // run the verlet integrator at 256 frames per second
+    const stepsPerSecondSquared = this.stepsPerSecond * this.stepsPerSecond
 
     const globalsBuffer = this._globalsBuffer(size, physicsScale, renderScale, min, max, stepsPerSecondSquared);
     this.particleBuffer = this._particleBuffer(range, max);
-    this.debugBuffer = this._debugBuffer(this.particleBuffer);
+    this.particleDebugBuffer = this._particleDebugBuffer(this.particleBuffer);
 
     this.gravityPipeline = this._gravityPipeline()
     this.computeBindGroup = this._gravityBindGroup(globalsBuffer, this.particleBuffer, this.gravityPipeline);
@@ -28,16 +30,21 @@ export default class Engine {
     this.renderBindGroup = this._renderBindGroup(globalsBuffer, this.particleBuffer, this.renderPipeline);
 
     this.gridBuffer = this._gridBuffer(size, 30)
+    this.gridDebugBuffer = this._gridDebugBuffer(this.gridBuffer);
     this.gridCountBuffer = this._gridCountBuffer(size)
+    this.gridCountDebugBuffer = this._gridCountDebugBuffer(this.gridCountBuffer)
     this.sortPipeline = this._sortPipeline()
     this.sortBindGroup = this._sortBindGroup(globalsBuffer, this.particleBuffer, this.gridBuffer, this.gridCountBuffer, this.sortPipeline);
   }
 
   start() {
-    setInterval(this.physicsLoop, 1000/this.stepsPerSecond)
+    setInterval(this.physicsLoop, 1000 / this.stepsPerSecond)
+
+    // single step for debugging
+    // setTimeout(this.physicsLoop, 1000)
   }
 
-  physicsLoop = () =>{
+  physicsLoop = async () => {
     const commandEncoder = this.device.createCommandEncoder();
 
     // Gravity pass 
@@ -51,7 +58,7 @@ export default class Engine {
 
     // For debugging particle positions
     // Encode a command to copy the results to a mappable buffer.
-    // commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
+    commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.particleDebugBuffer, 0, this.particleDebugBuffer.size);
 
     // Grid sort pass
     {
@@ -62,15 +69,66 @@ export default class Engine {
       pass.end();
     }
 
+    // For debugging grid
+    // Encode a command to copy the results to a mappable buffer.
+    commandEncoder.copyBufferToBuffer(this.gridBuffer, 0, this.gridDebugBuffer, 0, this.gridDebugBuffer.size);
+    commandEncoder.copyBufferToBuffer(this.gridCountBuffer, 0, this.gridCountDebugBuffer, 0, this.gridCountDebugBuffer.size);
+
+    // reset working memory
+    commandEncoder.clearBuffer(this.gridBuffer);
+    commandEncoder.clearBuffer(this.gridCountBuffer);
+
     this.device.queue.submit([commandEncoder.finish()]);
-    
-      // Read the debug buffer
-    // await debugBuffer.mapAsync(GPUMapMode.READ);
-    // const debug = new Int32Array(debugBuffer.getMappedRange().slice()); //copy data
-    // debugBuffer.unmap(); // give control back to gpu
-    // console.log("debug: x: "+debug[0]/ physicsScale, "y: " + debug[1]/ physicsScale)
-    
+
+    // Read the particle debug buffer
+    await this.particleDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugParticle = new Int32Array(this.particleDebugBuffer.getMappedRange().slice()); //copy data
+    this.particleDebugBuffer.unmap(); // give control back to gpu
+    // this._logParticles(debugParticle)
+
+    // Read the grid debug buffer
+    await this.gridDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugGrid = new Uint32Array(this.gridDebugBuffer.getMappedRange().slice()); //copy data to cpu memory
+    this.gridDebugBuffer.unmap(); // give control back to gpu
+    // this._logParticlesInGrid(debugGrid)
+
+    // read grid Count buffer
+    await this.gridCountDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugGridCount = new Uint32Array(this.gridCountDebugBuffer.getMappedRange().slice()); //copy data to cpu memory
+    this.gridCountDebugBuffer.unmap(); // give control back to gpu
+    this._logGridParticleCount(debugGridCount)
   }
+
+  _logParticles(particles){
+    console.log("logging particles")
+    for(let i = 0; i< particles.length; i = i + 4){
+      console.log("x: "+particles[i]/ this.physicsScale, "y: " + particles[i+1]/ this.physicsScale)
+    }
+  }
+
+  // first particle has index 0
+  _logParticlesInGrid(debugGrid) {
+    console.log("logging grid")
+    for (const [index, value] of debugGrid.entries()) {
+      if(value == 0) continue;
+      const cell = Math.floor(index/30) // do we need to floor?
+      const x = cell % this.size;
+      const y = Math.floor(cell / this.size);
+      console.log(`cell: ${cell}, x: ${x}, y: ${y}, value:${value}`);
+    }
+  }
+
+  _logGridParticleCount(debugGridCount) {
+    console.log("logging grid count")
+    for (const [index, value] of debugGridCount.entries()) {
+      if(value == 0) continue;
+      const x = index % this.size;
+      const y = Math.floor(index / this.size);
+      console.log(`x: ${x}, y: ${y}, value:${value}`);
+    }
+  }
+
+
 
   render(context) {
     const commandEncoder = this.device.createCommandEncoder();
@@ -95,7 +153,7 @@ export default class Engine {
     }
 
     this.device.queue.submit([commandEncoder.finish()]);
-    
+
   }
 
   _gravityPipeline() {
@@ -195,17 +253,15 @@ export default class Engine {
       particleData[i * 4 + 2] = x;
       particleData[i * 4 + 3] = y;
     }
-    // console.log("x: "+particleData[0]/ physicsScale, "y: " + particleData[1]/ physicsScale)
     this.device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
   }
 
-  _debugBuffer(particleBuffer) {
+  _particleDebugBuffer(particleBuffer) {
     // create a buffer on the GPU to get a copy of the results
-    const bufferSize = this.particleCount * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
     return this.device.createBuffer({
-      label: 'debug buffer',
+      label: 'particle debug buffer',
       size: particleBuffer.size,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
@@ -232,8 +288,8 @@ export default class Engine {
     globals.set([0, -10 * physicsScale], 0) // gravity
     globals.set([min, max], 2) // min and max position bounds
     globals.set([physicsScale, renderScale], 4) // scale
-    globals.set([stepsPerSecondSquared], 6) 
-    globals.set([size], 7) 
+    globals.set([stepsPerSecondSquared], 6)
+    globals.set([size], 7)
     console.log(globals)
 
     // queue writing globals to the buffer
@@ -244,20 +300,42 @@ export default class Engine {
 
   // TODO: particles per cell in global var.
   // stores indexes to particles per cell
-  _gridBuffer(size, particlesPerCell){
+  _gridBuffer(size, particlesPerCell) {
     return this.device.createBuffer({
       label: 'grid buffer',
       size: 4 * size * size * particlesPerCell,
-      usage: GPUBufferUsage.STORAGE,
+      // COPY_DST required for clearing buffer
+      // COPY_SRC for copy to debug buffer
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+
+  _gridDebugBuffer(buffer) {
+    // create a buffer on the GPU to get a copy of the results
+    return this.device.createBuffer({
+      label: 'grid debug buffer',
+      size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
 
   // stores the nr of particles in a given cell as u32
-  _gridCountBuffer(size){
+  _gridCountBuffer(size) {
     return this.device.createBuffer({
       label: 'gridCount buffer',
       size: 4 * size * size,
-      usage: GPUBufferUsage.STORAGE,
+      // COPY_DST required for clearing buffer
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+
+  // stores the nr of particles in a given cell as u32
+  _gridCountDebugBuffer(buffer) {
+    // create a buffer on the GPU to get a copy of the results
+    return this.device.createBuffer({
+      label: 'grid count debug buffer',
+      size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
 

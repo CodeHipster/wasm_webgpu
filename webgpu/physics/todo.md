@@ -1,5 +1,8 @@
 # TODO
 
+## bugs
+size < 20 makes the particles fall up?
+
 ## GoaL
 verlet integration between particles and the bounding box
 

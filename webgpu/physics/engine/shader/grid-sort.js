@@ -36,6 +36,8 @@ fn gridIndex(pos: vec2<i32>) -> u32 {
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    if(id.x >= arrayLength(&particles)){return;}
+
     let particle_index = id.x;
 
     let particle_pos = particles[particle_index].position;
