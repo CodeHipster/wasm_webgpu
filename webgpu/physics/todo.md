@@ -23,7 +23,7 @@ so scale is: 4_000_000 / SIZE. e.g. 4_000
 position is: (pos - 100_000) / scale. e.g. (1_700_000 - 100_000) / 4_000 = 400
 scaled position is: (pos * scale) + 100_000
 
-### sort pixels into grid
+### sort pixels into grid DONE
 
 grid = 1000x1000
 each cell has space for 30 pixels
@@ -36,6 +36,11 @@ So this should fit as an upper limit. We will have to check what the performance
 ### collision detection
 
 check for collision with the 9 cells around. using the previously constructed grid.
+
+Keep a separate atomic storage for x,y displacements for particles. 
+When calculating displacement add to storage
+
+on the next pass, apply displacement to each particle.
 
 ### add physics 
 do calculations to determine new position based from forces of other particles & gravity
