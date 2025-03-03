@@ -96,7 +96,7 @@ export default class Engine {
     await this.gridCountDebugBuffer.mapAsync(GPUMapMode.READ);
     const debugGridCount = new Uint32Array(this.gridCountDebugBuffer.getMappedRange().slice()); //copy data to cpu memory
     this.gridCountDebugBuffer.unmap(); // give control back to gpu
-    this._logGridParticleCount(debugGridCount)
+    // this._logGridParticleCount(debugGridCount)
   }
 
   _logParticles(particles){
