@@ -33,7 +33,6 @@ async function main() {
   requestAnimationFrame(renderLoop);
 }
 
-
 main();
 
 
