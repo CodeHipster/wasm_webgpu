@@ -38,19 +38,26 @@ fn gridIndex(pos: vec2<i32>) -> u32 {
 
 fn getNeighbours(grid_index: u32) -> array<u32> {
   // get particles from all 9 cells
+  // TODO implement
+  return array<i32, 3>(1, 2, 3)
 }
 
 fn distanceSquared(v : vec2i) -> i32 {
-
+  // TODO implement, for now returning something that always misses
+  return globals.physics_scale * 2;
 }
 
 //returns vector between particles and distance_squared if it collides
 fn collides(p1: Particle, p2: Particle) -> (bool, vec2i, i32) {
-
+  // TODO: implement, for now not colliding
+  return (false, vec2<i32>(0, 0), 0)
 }
 
+// returns the amount of displacement for the particle
+// TODO: potential optimization as we also know the displacement of the other particle.
+// if other particle index < this particle index, we have already calculated for both.
 fn bounce(diff: vec2i, magnitude_squared: i32) -> vec2i {
-
+  return vec2i(1,1)
 }
 
 @compute @workgroup_size(64)
@@ -66,28 +73,19 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     for (var i: u32 = 0; i < arrayLength(neighbours); i = i + 1) {
       let n_index = neighbours[i]; // get neighbour index
       let n = particles[n_index];
-      var (diff, magnitude_squared) = collides(p, n);
-      var dis1 = bounce(diff, magnitude_squared);
+      
+      var (collides, diff, magnitude_squared) = collides(p, n);
+      if(!collides) {continue;}
+
+      var displacement = bounce(diff, magnitude_squared);
 
       // set displacement values in buffer
-    }
-
-    // Use atomicAdd to ensure safe writing
-    let slot = atomicAdd(&grid_count[grid_index], 1);
-    if (slot < MAX_PARTICLES_PER_CELL) {
-      // This will make it a sparse array.
-        grid[grid_index * MAX_PARTICLES_PER_CELL + slot] = particle_index;
+      // Use atomicAdd to ensure safe writing
+      let displacement_index = particle_index * 2;
+      atomicAdd(&particle_displacement[displacement_index], displacement.x);
+      atomicAdd(&particle_displacement[displacement_index + 1], displacement.y);
     }
 }
-
-// main method: for each particle
-// or for each grid?
-
-// find the cell the particle is in
-// get all surrounding particles
-// check with each particle the intersection
-// if intersecting, calculate resulting displacement for both
-// and add displacement to values in array
 
 // radius == physicsScale
 

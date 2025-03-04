@@ -1,6 +1,7 @@
 import particleGravityWGSL from "./shader/particle-gravity.js";
 import gridSortWGSL from "./shader/grid-sort.js";
 import particleShaderWGSL from "./shader/particle-shader.js";
+import GravityPass from "./passes/gravity/gravity-pass.js";
 
 export default class Engine {
 
@@ -20,12 +21,16 @@ export default class Engine {
     this.stepsPerSecond = 30 // run the verlet integrator at 256 frames per second
     const stepsPerSecondSquared = this.stepsPerSecond * this.stepsPerSecond
 
+    const workgroupCount = this.particleCount / 64 + 1
+
     const globalsBuffer = this._globalsBuffer(size, physicsScale, renderScale, min, max, stepsPerSecondSquared);
     this.particleBuffer = this._particleBuffer(range, max);
     this.particleDebugBuffer = this._particleDebugBuffer(this.particleBuffer);
 
     this.gravityPipeline = this._gravityPipeline()
     this.computeBindGroup = this._gravityBindGroup(globalsBuffer, this.particleBuffer, this.gravityPipeline);
+    this.gravityPass = new GravityPass(this.gravityPipeline, this.computeBindGroup, workgroupCount)
+    
     this.renderPipeline = this._renderPipeline(textureFormat);
     this.renderBindGroup = this._renderBindGroup(globalsBuffer, this.particleBuffer, this.renderPipeline);
 
@@ -48,13 +53,7 @@ export default class Engine {
     const commandEncoder = this.device.createCommandEncoder();
 
     // Gravity pass 
-    {
-      const pass = commandEncoder.beginComputePass();
-      pass.setPipeline(this.gravityPipeline);
-      pass.setBindGroup(0, this.computeBindGroup);
-      pass.dispatchWorkgroups(this.particleCount / 64 + 1);
-      pass.end();
-    }
+    this.gravityPass.setPass(commandEncoder)
 
     // For debugging particle positions
     // Encode a command to copy the results to a mappable buffer.

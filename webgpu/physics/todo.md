@@ -42,11 +42,11 @@ When calculating displacement add to storage
 
 on the next pass, apply displacement to each particle.
 
-### add physics 
-do calculations to determine new position based from forces of other particles & gravity
-
 
 ### detect refreshrate of browser instead of assuming 60
 Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.
 Maybe round off to nearest standard. 60/90/120/144 etc
+
+### log performance of the gpu
+Not sure how we can do this, but we should be able to detect if the gpu command queue is filling up, or if it is coping
 
