@@ -27,8 +27,8 @@ export default class RenderPass {
   
   _renderPipeline(device, textureFormat) {
     const module = device.createShaderModule({
-      label: 'particle-shader.js',
-      code: particleShaderWGSL,
+      label: 'render-pass.js',
+      code: shader,
     });
 
     return device.createRenderPipeline({
@@ -56,7 +56,7 @@ export default class RenderPass {
   }
 }
 
-const particleShaderWGSL = /*wgsl*/`
+const shader = /*wgsl*/`
   struct GlobalVars {
     gravity: vec2i, // (x,y) acceleration
     min: i32,

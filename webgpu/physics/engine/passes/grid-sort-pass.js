@@ -1,12 +1,21 @@
 export default class GridSortPass {
 
-  constructor(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, workgroupCount) {
+  constructor(device, globalsBuffer, particleBuffer, workgroupCount, size, particlesPerCell) {
+    this.gridBuffer = this._gridBuffer(device, size, particlesPerCell)
+    this.gridDebugBuffer = this._gridDebugBuffer(device, this.gridBuffer)
+    this.gridCountBuffer = this._gridCountBuffer(device, size)
+    this.gridCountDebugBuffer = this._gridCountDebugBuffer(device, this.gridCountBuffer)
+
     this.pipeline = this._pipeline(device);
-    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.pipeline);
+    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, this.gridBuffer, this.gridCountBuffer, this.pipeline);
     this.workgroupCount = workgroupCount;
   }
 
   pass(commandEncoder) {
+    // wipe buffers to remove data from previous pass
+    commandEncoder.clearBuffer(this.gridBuffer);
+    commandEncoder.clearBuffer(this.gridCountBuffer);
+
     const pass = commandEncoder.beginComputePass();
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.bindGroup);
@@ -16,8 +25,8 @@ export default class GridSortPass {
 
   _pipeline(device) {
     const gravityModule = device.createShaderModule({
-      label: 'grid-sort.js',
-      code: gridSortWGSL,
+      label: 'grid-sort-pass.js',
+      code: shader,
     });
 
     return device.createComputePipeline({
@@ -37,9 +46,50 @@ export default class GridSortPass {
       ]
     });
   }
+
+  // TODO: particles per cell in global var.
+  // stores indexes to particles per cell
+  _gridBuffer(device, size, particlesPerCell) {
+    return device.createBuffer({
+      label: 'grid buffer',
+      size: 4 * size * size * particlesPerCell,
+      // COPY_DST required for clearing buffer
+      // COPY_SRC for copy to debug buffer
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+
+  _gridDebugBuffer(device, buffer) {
+    // create a buffer on the GPU to get a copy of the results
+    return device.createBuffer({
+      label: 'grid debug buffer',
+      size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+  }
+
+  // stores the nr of particles in a given cell as u32
+  _gridCountBuffer(device, size) {
+    return device.createBuffer({
+      label: 'gridCount buffer',
+      size: 4 * size * size,
+      // COPY_DST required for clearing buffer
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+
+  // stores the nr of particles in a given cell as u32
+  _gridCountDebugBuffer(device, buffer) {
+    // create a buffer on the GPU to get a copy of the results
+    return device.createBuffer({
+      label: 'grid count debug buffer',
+      size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+  }
 }
 
-const gridSortWGSL = /*wgsl*/`
+const shader = /*wgsl*/`
   const MAX_PARTICLES_PER_CELL: u32 = 30; // 1000 * 1000 * 30 is close to 128mb max storage space. Max size is 1000
 
   struct GlobalVars {

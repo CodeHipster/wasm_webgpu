@@ -16,8 +16,8 @@ export default class GravityPass {
 
   _pipeline(device) {
     const module = device.createShaderModule({
-      label: 'particle-gravity.js',
-      code: particleGravityWGSL,
+      label: 'gravity-pass.js',
+      code: shader,
     });
 
     return device.createComputePipeline({
@@ -36,7 +36,7 @@ export default class GravityPass {
   }
 }
 
-const particleGravityWGSL = /* wgsl */`
+const shader = /* wgsl */`
   struct GlobalVars {
     gravity: vec2i, // (x,y) acceleration
     min: i32,
