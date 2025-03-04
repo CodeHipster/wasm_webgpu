@@ -44,20 +44,32 @@ fn distanceSquared(v : vec2i) -> i32 {
 
 }
 
+//returns vector between particles and distance_squared if it collides
+fn collides(p1: Particle, p2: Particle) -> (bool, vec2i, i32) {
+
+}
+
+fn bounce(diff: vec2i, magnitude_squared: i32) -> vec2i {
+
+}
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if(id.x >= arrayLength(&particles)){return;}
 
     let particle_index = id.x;
-    let p = particles[particle_index]
+    let p = particles[particle_index];
     let grid_index = gridIndex(p.position);
 
     let neighbours = getNeighbours(grid_index);
 
     for (var i: u32 = 0; i < arrayLength(neighbours); i = i + 1) {
-      let n = neighbours[i]; // get neighbour index
-      
+      let n_index = neighbours[i]; // get neighbour index
+      let n = particles[n_index];
+      var (diff, magnitude_squared) = collides(p, n);
+      var dis1 = bounce(diff, magnitude_squared);
 
+      // set displacement values in buffer
     }
 
     // Use atomicAdd to ensure safe writing
