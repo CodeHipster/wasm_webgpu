@@ -50,14 +50,14 @@ fn distanceSquared(v : vec2i) -> i32 {
 //returns vector between particles and distance_squared if it collides
 fn collides(p1: Particle, p2: Particle) -> (bool, vec2i, i32) {
   // TODO: implement, for now not colliding
-  return (false, vec2<i32>(0, 0), 0)
+  return (false, vec2i(0, 0), 0)
 }
 
 // returns the amount of displacement for the particle
 // TODO: potential optimization as we also know the displacement of the other particle.
 // if other particle index < this particle index, we have already calculated for both.
 fn bounce(diff: vec2i, magnitude_squared: i32) -> vec2i {
-  return vec2i(1,1)
+  return vec2i(1,1);
 }
 
 @compute @workgroup_size(64)
