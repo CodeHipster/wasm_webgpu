@@ -6,12 +6,29 @@ export default class CollisionPass {
     this.workgroupCount = workgroupCount;
   }
 
+  debug() {
+    this._debug = true;
+  }
+
+  logBuffer() {
+    if (!this._debug) throw new Error("Debug must be enabled for logging.")
+    //   console.log("logging displacements")
+    //   for(let i = 0; i< particles.length; i = i + 4){
+    //     console.log("x: "+particles[i]/ this.physicsScale, "y: " + particles[i+1]/ this.physicsScale)
+    //   }
+  }
+
   pass(commandEncoder) {
     const pass = commandEncoder.beginComputePass();
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.bindGroup);
     pass.dispatchWorkgroups(this.workgroupCount);
     pass.end();
+
+    if (this._debug) {
+      // Encode a command to copy the results to a mappable buffer.
+      commandEncoder.copyBufferToBuffer(this.displacementBuffer, 0, this.displacementDebugBuffer, 0, this.displacementDebugBuffer.size);
+    }
   }
 
   _pipeline(device) {

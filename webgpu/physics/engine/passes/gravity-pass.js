@@ -12,6 +12,10 @@ export default class GravityPass {
     pass.setBindGroup(0, this.bindGroup);
     pass.dispatchWorkgroups(this.workgroupCount);
     pass.end();
+    
+    if(this.debug){
+      commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.particleDebugBuffer, 0, this.particleDebugBuffer.size);
+    }
   }
 
   _pipeline(device) {

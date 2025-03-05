@@ -1,6 +1,7 @@
 export default class GridSortPass {
 
   constructor(device, globalsBuffer, particleBuffer, workgroupCount, size, particlesPerCell) {
+    this.size = size;
     this.gridBuffer = this._gridBuffer(device, size, particlesPerCell)
     this.gridDebugBuffer = this._gridDebugBuffer(device, this.gridBuffer)
     this.gridCountBuffer = this._gridCountBuffer(device, size)
@@ -9,6 +10,42 @@ export default class GridSortPass {
     this.pipeline = this._pipeline(device);
     this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, this.gridBuffer, this.gridCountBuffer, this.pipeline);
     this.workgroupCount = workgroupCount;
+  }
+
+  debug() {
+    this._debug = true;
+  }
+
+  async logBuffer() {
+    if (!this._debug) {
+      console.log("Debug is disabled on GridSortPass.");
+      return
+    }
+
+    await this.gridDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugGrid = new Uint32Array(this.gridDebugBuffer.getMappedRange().slice()); //copy data to cpu memory
+    this.gridDebugBuffer.unmap(); // give control back to gpu
+
+    await this.gridCountDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugGridCount = new Uint32Array(this.gridCountDebugBuffer.getMappedRange().slice()); //copy data to cpu memory
+    this.gridCountDebugBuffer.unmap(); // give control back to gpu
+
+    console.log("logging grid")
+    for (const [index, value] of debugGrid.entries()) {
+      if (value == 0) continue;
+      const cell = Math.floor(index / 30)
+      const x = cell % this.size;
+      const y = Math.floor(cell / this.size);
+      console.log(`cell: ${cell}, x: ${x}, y: ${y}, value:${value}`);
+    }
+
+    console.log("logging grid count")
+    for (const [index, value] of debugGridCount.entries()) {
+      if (value == 0) continue;
+      const x = index % this.size;
+      const y = Math.floor(index / this.size);
+      console.log(`x: ${x}, y: ${y}, value:${value}`);
+    }
   }
 
   pass(commandEncoder) {
@@ -21,6 +58,11 @@ export default class GridSortPass {
     pass.setBindGroup(0, this.bindGroup);
     pass.dispatchWorkgroups(this.workgroupCount);
     pass.end();
+
+    if (this._debug) {
+      commandEncoder.copyBufferToBuffer(this.gridBuffer, 0, this.gridDebugBuffer, 0, this.gridDebugBuffer.size);
+      commandEncoder.copyBufferToBuffer(this.gridCountBuffer, 0, this.gridCountDebugBuffer, 0, this.gridCountDebugBuffer.size);
+    }
   }
 
   _pipeline(device) {

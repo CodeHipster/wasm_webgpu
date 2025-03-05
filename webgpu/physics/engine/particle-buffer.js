@@ -4,6 +4,34 @@ export default class ParticleBuffer {
     this.debugBuffer = this._debugBuffer(device, this.buffer)
   }
 
+  debug(physicsScale) {
+    this.physicsScale = physicsScale;
+    this._debug = true;
+  }
+
+  async copy(commandEncoder) {
+    if (!this._debug) {
+      console.log("debug not enabled on ParticleBuffer")
+      return;
+    }
+    commandEncoder.copyBufferToBuffer(this.buffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
+  }
+
+  async logBuffer() {
+    if (!this._debug) {
+      console.log("debug not enabled on ParticleBuffer")
+      return;
+    }
+
+    console.log("logging particles")
+    await this.debugBuffer.mapAsync(GPUMapMode.READ);
+    const debugParticle = new Int32Array(this.debugBuffer.getMappedRange().slice()); //copy data
+    this.debugBuffer.unmap(); // give control back to gpu
+    for (let i = 0; i < debugParticle.length; i = i + 4) {
+      console.log("x: " + debugParticle[i] / this.physicsScale, "y: " + debugParticle[i + 1] / this.physicsScale)
+    }
+  }
+
   _buffer(device, particleCount, range, max) {
     // Create particle buffer (shared between compute & render)
     const bufferSize = particleCount * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
@@ -30,7 +58,7 @@ export default class ParticleBuffer {
 
     return particleBuffer;
   }
-  
+
   _debugBuffer(device, particleBuffer) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({
