@@ -1,5 +1,6 @@
 import GlobalsBuffer from "./globals-buffer.js";
 import ParticleBuffer from "./particle-buffer.js";
+import CollisionPass from "./passes/collision-pass.js";
 import GravityPass from "./passes/gravity-pass.js";
 import GridSortPass from "./passes/grid-sort-pass.js";
 import RenderPass from "./passes/render-pass.js";
@@ -26,8 +27,8 @@ export default class Engine {
 
     const globalsBuffer = new GlobalsBuffer(device, size, physicsScale, renderScale, min, max, this.stepsPerSecond).buffer;
 
-    this.ParticleBuffer = new ParticleBuffer(device, particleCount, range, max);
-    const particleDeviceBuffer = this.ParticleBuffer.buffer;
+    this.particleBuffer = new ParticleBuffer(device, particleCount, range, max);
+    const particleDeviceBuffer = this.particleBuffer.buffer;
     // this.ParticleBuffer.debug(physicsScale)
 
     this.gravityPass = new GravityPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount);
@@ -35,6 +36,10 @@ export default class Engine {
 
     this.gridSortPass = new GridSortPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount, size, particlesPerCell)
     // this.gridSortPass.debug()
+
+    const gridBuffer = this.gridSortPass.gridBuffer;
+    const gridCountBuffer = this.gridSortPass.gridCountBuffer;
+    this.collisionPass = new CollisionPass(device, globalsBuffer, particleDeviceBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
   }
 
   start() {

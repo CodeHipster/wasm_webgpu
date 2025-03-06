@@ -1,64 +1,11 @@
-export default class CollisionPass {
-
-  constructor(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, workgroupCount) {
-    this.pipeline = this._pipeline(device);
-    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, this.pipeline);
-    this.workgroupCount = workgroupCount;
-  }
-
-  debug() {
-    this._debug = true;
-  }
-
-  logBuffer() {
-    if (!this._debug) throw new Error("Debug must be enabled for logging.")
-    //   console.log("logging displacements")
-    //   for(let i = 0; i< particles.length; i = i + 4){
-    //     console.log("x: "+particles[i]/ this.physicsScale, "y: " + particles[i+1]/ this.physicsScale)
-    //   }
-  }
-
-  pass(commandEncoder) {
-    const pass = commandEncoder.beginComputePass();
-    pass.setPipeline(this.pipeline);
-    pass.setBindGroup(0, this.bindGroup);
-    pass.dispatchWorkgroups(this.workgroupCount);
-    pass.end();
-
-    if (this._debug) {
-      // Encode a command to copy the results to a mappable buffer.
-      commandEncoder.copyBufferToBuffer(this.displacementBuffer, 0, this.displacementDebugBuffer, 0, this.displacementDebugBuffer.size);
-    }
-  }
-
-  _pipeline(device) {
-    const module = device.createShaderModule({
-      label: 'collision-pass.js',
-      code: shader,
-    });
-
-    return device.createComputePipeline({
-      layout: "auto",
-      compute: { module: module, entryPoint: "main" }
-    });
-  }
-
-  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, pipeline) {
-    return device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: particleBuffer } },
-        { binding: 1, resource: { buffer: globalsBuffer } },
-        { binding: 2, resource: { buffer: gridBuffer } },
-        { binding: 3, resource: { buffer: gridCountBuffer } },
-        { binding: 4, resource: { buffer: displacementBuffer } },
-      ]
-    });
-  }
-}
-
 const shader = /*wgsl*/`
   const MAX_PARTICLES_PER_CELL: u32 = 30; // 1000 * 1000 * 30 is close to 128mb max storage space. Max size is 1000
+
+  struct Collision {
+    hit: bool,
+    vector: vec2i,
+    magSq: i32,
+  }
 
   struct GlobalVars {
     gravity: vec2i, // (x,y) acceleration
@@ -97,7 +44,7 @@ const shader = /*wgsl*/`
   fn getNeighbours(grid_index: u32) -> array<u32> {
     // get particles from all 9 cells
     // TODO implement
-    return array<i32, 3>(1, 2, 3)
+    return array<u32>(1, 2, 3);
   }
 
   fn distanceSquared(v : vec2i) -> i32 {
@@ -106,9 +53,9 @@ const shader = /*wgsl*/`
   }
 
   //returns vector between particles and distance_squared if it collides
-  fn collides(p1: Particle, p2: Particle) -> (bool, vec2i, i32) {
+  fn collides(p1: Particle, p2: Particle) -> Collision {
     // TODO: implement, for now not colliding
-    return (false, vec2i(0, 0), 0)
+    return Collision(false, vec2i(0, 0), 0);
   }
 
   // returns the amount of displacement for the particle
@@ -132,8 +79,8 @@ const shader = /*wgsl*/`
         let n_index = neighbours[i]; // get neighbour index
         let n = particles[n_index];
         
-        var (collides, diff, magnitude_squared) = collides(p, n);
-        if(!collides) {continue;}
+        var collision = collides(p, n);
+        if(!collision.hit) {continue;}
 
         var displacement = bounce(diff, magnitude_squared);
 
@@ -181,3 +128,91 @@ const shader = /*wgsl*/`
 
 
 `
+
+export default class CollisionPass {
+
+  constructor(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount) {
+    this.pipeline = this._pipeline(device);
+    this.displacementBuffer = this._displacementBuffer(device, particleCount);
+    this.displacementDebugBuffer = this._displacementDebugBuffer(device, this.displacementBuffer)
+    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.displacementBuffer, this.pipeline);
+    this.workgroupCount = workgroupCount;
+  }
+
+  debug(physicsScale) {
+    this.physicsScale = physicsScale;
+    this._debug = true;
+  }
+
+  async logDebug() {
+    if (!this._debug) {
+      console.log("debug not enabled on CollisionPass")
+      return;
+    }
+
+    console.log("logging displacements")
+    await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
+    this.displacementDebugBuffer.unmap(); // give control back to gpu
+    for (let i = 0; i < debugDisplacement.length; i = i + 2) {
+      console.log("x: " + debugDisplacement[i] / this.physicsScale, "y: " + debugDisplacement[i + 1] / this.physicsScale)
+    }
+  }
+
+  pass(commandEncoder) {
+    const pass = commandEncoder.beginComputePass();
+    pass.setPipeline(this.pipeline);
+    pass.setBindGroup(0, this.bindGroup);
+    pass.dispatchWorkgroups(this.workgroupCount);
+    pass.end();
+
+    if (this._debug) {
+      // Encode a command to copy the results to a mappable buffer.
+      commandEncoder.copyBufferToBuffer(this.displacementBuffer, 0, this.displacementDebugBuffer, 0, this.displacementDebugBuffer.size);
+    }
+  }
+
+  _pipeline(device) {
+    const module = device.createShaderModule({
+      label: 'collision-pass.js',
+      code: shader,
+    });
+
+    return device.createComputePipeline({
+      layout: "auto",
+      compute: { module: module, entryPoint: "main" }
+    });
+  }
+
+  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, pipeline) {
+    return device.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: globalsBuffer } },
+        { binding: 2, resource: { buffer: gridBuffer } },
+        { binding: 3, resource: { buffer: gridCountBuffer } },
+        { binding: 4, resource: { buffer: displacementBuffer } },
+      ]
+    });
+  }
+
+  _displacementBuffer(device, particleCount) {
+    return device.createBuffer({
+      label: 'displacement buffer',
+      size: 4 * 2 * particleCount, // x,y per particle
+      // COPY_DST required for clearing buffer
+      // COPY_SRC for copy to debug buffer
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+  
+  _displacementDebugBuffer(device, buffer) {
+    // create a buffer on the GPU to get a copy of the results
+    return device.createBuffer({
+      label: 'displacement debug buffer',
+      size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+  }
+}
