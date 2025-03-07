@@ -3,17 +3,22 @@ const shader = /* wgsl */`
   struct Particle {
     position: vec2<i32>,
     prev_position: vec2<i32>,
-  };
+  }
+
+  struct Displacement {
+    x: atomic<i32>,
+    y: atomic<i32>
+  }
 
   @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
-  @group(0) @binding(1) var<storage, read_write> particle_displacement: array<atomic<i32>>; // Particle displacement 2 ints for each particle. x & y
+  @group(0) @binding(1) var<storage, read_write> particle_displacement: array<Displacement>; // Particle displacement 2 ints for each particle. x & y
 
   @compute @workgroup_size(64)
   fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if(id.x >= arrayLength(&particles)){return;}
     let i = id.x;
 
-    let displacement = vec2i(atomicLoad(&particle_displacement[i * 2]), atomicLoad(&particle_displacement[i * 2 + 1]));
+    let displacement = vec2i(atomicLoad(&particle_displacement[i].x), atomicLoad(&particle_displacement[i].y));
         
     particles[i].position = particles[i].position + displacement;
   }

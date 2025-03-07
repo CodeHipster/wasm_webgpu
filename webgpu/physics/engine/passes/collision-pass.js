@@ -1,6 +1,5 @@
 const shader = /*wgsl*/`
   const MAX_PARTICLES_PER_CELL: u32 = 30; // 1000 * 1000 * 30 is close to 128mb max storage space. Max size is 1000
-  const OUT_OF_BOUNDS: u32 = 4294967295;
   const offsets = array<vec2<i32>, 9>(
     vec2(-1, -1), vec2(0, -1), vec2(1, -1),  // Top neighbors
     vec2(-1, 0), vec2(0, 0), vec2(1, 0),     // Left and Right
@@ -12,7 +11,13 @@ const shader = /*wgsl*/`
   @group(0) @binding(1) var<uniform> globals: GlobalVars;
   @group(0) @binding(2) var<storage, read_write> grid: array<u32>; // Stores particle indices
   @group(0) @binding(3) var<storage, read_write> grid_count: array<atomic<u32>>; // Particle count per cell
-  @group(0) @binding(4) var<storage, read_write> particle_displacement: array<atomic<i32>>; // Particle displacement 2 ints for each particle. x & y
+  @group(0) @binding(4) var<storage, read_write> particle_displacement: array<Displacement>; // Particle displacement
+  @group(0) @binding(5) var<storage, read_write> collision_count: atomic<u32>; 
+
+  struct Displacement {
+    x: atomic<i32>,
+    y: atomic<i32>
+  }
 
   struct Collision {
     hit: bool,
@@ -22,7 +27,7 @@ const shader = /*wgsl*/`
 
   struct Neighbours {
     count: u32,
-    neighbour: array<u32, 270>
+    neighbour: array<u32, 270> //270 = 30*9, max amount of neighbours possible in the cells
   }
 
   struct GlobalVars {
@@ -48,11 +53,11 @@ const shader = /*wgsl*/`
     return array_index * MAX_PARTICLES_PER_CELL; //
   }
 
-  fn arrayIndex(grid_pos: vec2<i32>) -> u32 {
+  fn arrayIndex(grid_pos: vec2i) -> u32 {
     return u32(grid_pos.x + (grid_pos.y * globals.size));
   }
 
-  fn positionOnGrid(pos: vec2<i32>) -> vec2<i32> {
+  fn positionOnGrid(pos: vec2i) -> vec2i {
     // To move from signed ints to unsigned ints, 
     let align = globals.size / 2;
     // the width of the grid.
@@ -66,13 +71,15 @@ const shader = /*wgsl*/`
   // TODO: optimize with storage buffer?
   fn getNeighbours(position: vec2i) -> Neighbours {
 
+    var grid_position = positionOnGrid(position);
     var neighbour = array<u32,270>();
     var count: u32 = 0;
     for (var i: u32 = 0; i < 9; i = i + 1) {
-      let grid_index = position + offsets[i];
+      let grid_index = grid_position + offsets[i]; // grid position for the neighbouring cell
 
       // Ensure the neighbor is within grid bounds
       if (grid_index.x >= 0 && grid_index.x < globals.size && grid_index.y >= 0 && grid_index.y <globals.size) {
+        
         let count_index = arrayIndex(grid_index);  // index of count array, which has just 1 u32 for each cell.
         let grid_index = arrayIndexOffset(count_index); // index in the grid array which has index * 30 per cell.
         let n_count = atomicLoad(&grid_count[count_index]); // Loading atomic value here does not cause a problem, as the grid is not modified in this pass.
@@ -116,7 +123,6 @@ const shader = /*wgsl*/`
       if(id.x >= arrayLength(&particles)){return;}
 
       let particle_index = id.x;
-      let particle_displacement_index = particle_index * 2;
       let p = particles[particle_index];
       let neighbours = getNeighbours(p.position);
 
@@ -128,17 +134,16 @@ const shader = /*wgsl*/`
         var collision = collides(p, n);
         if(!collision.hit) {continue;}
 
+        atomicAdd(&collision_count,1);
+
         var displacement = bounce(collision.diff, collision.dot);
 
-        // set displacement values in buffer
-        // Use atomicAdd to ensure safe writing
-        let n_displacement_index = n_index * 2;
         // displace particle
-        atomicAdd(&particle_displacement[particle_displacement_index], displacement.x);
-        atomicAdd(&particle_displacement[particle_displacement_index + 1], displacement.y);
+        atomicAdd(&particle_displacement[particle_index].x, displacement.x);
+        atomicAdd(&particle_displacement[particle_index].y, displacement.y);
         // displace neighbour
-        atomicAdd(&particle_displacement[n_displacement_index], -displacement.x);
-        atomicAdd(&particle_displacement[n_displacement_index + 1], -displacement.y);
+        atomicAdd(&particle_displacement[n_index].x, -displacement.x);
+        atomicAdd(&particle_displacement[n_index].y, -displacement.y);
       }
   }
 `
@@ -149,7 +154,10 @@ export default class CollisionPass {
     this.pipeline = this._pipeline(device);
     this.displacementBuffer = this._displacementBuffer(device, particleCount);
     this.displacementDebugBuffer = this._displacementDebugBuffer(device, this.displacementBuffer)
-    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.displacementBuffer, this.pipeline);
+    this.collisionCountBuffer = this._collisionCountBuffer(device);
+    this.collisionCountDebugBuffer = this._collisionCountDebugBuffer(device)
+    
+    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.displacementBuffer, this.collisionCountBuffer, this.pipeline);
     this.workgroupCount = workgroupCount;
   }
 
@@ -172,6 +180,12 @@ export default class CollisionPass {
     for (let i = 0; i < debugDisplacement.length; i = i + 2) {
       console.log(`index: ${i / 2} x: ${debugDisplacement[i] / this.physicsScale}, y: ${debugDisplacement[i + 1] / this.physicsScale}`)
     }
+
+    await this.collisionCountDebugBuffer.mapAsync(GPUMapMode.READ);
+    const collisionCount = new Uint32Array(this.collisionCountDebugBuffer.getMappedRange().slice()); //copy data
+    this.collisionCountDebugBuffer.unmap(); // give control back to gpu
+    console.log(collisionCount);
+
   }
 
   pass(commandEncoder) {
@@ -187,6 +201,7 @@ export default class CollisionPass {
     if (this._debug) {
       // Encode a command to copy the results to a mappable buffer.
       commandEncoder.copyBufferToBuffer(this.displacementBuffer, 0, this.displacementDebugBuffer, 0, this.displacementDebugBuffer.size);
+      commandEncoder.copyBufferToBuffer(this.collisionCountBuffer, 0, this.collisionCountDebugBuffer, 0, this.collisionCountDebugBuffer.size);
     }
   }
 
@@ -202,7 +217,7 @@ export default class CollisionPass {
     });
   }
 
-  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, pipeline) {
+  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, collisionCountBuffer, pipeline) {
     return device.createBindGroup({
       label: 'collision-bindgroup',
       layout: pipeline.getBindGroupLayout(0),
@@ -212,6 +227,7 @@ export default class CollisionPass {
         { binding: 2, resource: { buffer: gridBuffer } },
         { binding: 3, resource: { buffer: gridCountBuffer } },
         { binding: 4, resource: { buffer: displacementBuffer } },
+        { binding: 5, resource: { buffer: collisionCountBuffer } },
       ]
     });
   }
@@ -231,6 +247,24 @@ export default class CollisionPass {
     return device.createBuffer({
       label: 'displacement debug buffer',
       size: buffer.size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+  }
+  
+  _collisionCountBuffer(device) {
+    // create a buffer on the GPU to get a copy of the results
+    return device.createBuffer({
+      label: 'collision count buffer',
+      size: 8, // 1 u32 of 4 bytes. and empty space because the minimum is 8
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+  }
+  
+  _collisionCountDebugBuffer(device) {
+    // create a buffer on the GPU to get a copy of the results
+    return device.createBuffer({
+      label: 'collision count debug buffer',
+      size: 8, // 1 u32 of 4 bytes. and empty space because the minimum is 8
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
