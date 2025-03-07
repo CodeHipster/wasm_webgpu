@@ -17,7 +17,7 @@ const shader = /*wgsl*/`
   struct Collision {
     hit: bool,
     diff: vec2i,
-    mag_sq: i32,
+    dot: i32, // the dot product of vector diff, which is the squared length. x*x + y*y
   }
 
   struct Neighbours {
@@ -67,7 +67,7 @@ const shader = /*wgsl*/`
   fn getNeighbours(position: vec2i) -> Neighbours {
 
     var neighbour = array<u32,270>();
-    var count = 0;
+    var count: u32 = 0;
     for (var i: u32 = 0; i < 9; i = i + 1) {
       let grid_index = position + offsets[i];
 
@@ -75,7 +75,7 @@ const shader = /*wgsl*/`
       if (grid_index.x >= 0 && grid_index.x < globals.size && grid_index.y >= 0 && grid_index.y <globals.size) {
         let count_index = arrayIndex(grid_index);  // index of count array, which has just 1 u32 for each cell.
         let grid_index = arrayIndexOffset(count_index); // index in the grid array which has index * 30 per cell.
-        let n_count = grid_count[count_index];
+        let n_count = atomicLoad(&grid_count[count_index]); // Loading atomic value here does not cause a problem, as the grid is not modified in this pass.
           
         // fetch count of neighbours
         for (var c: u32 = 0; c < n_count; c = c + 1) {
@@ -90,22 +90,25 @@ const shader = /*wgsl*/`
     return Neighbours(count,neighbour);
   }
 
-  fn distanceSquared(v : vec2i) -> i32 {
-    // TODO implement, for now returning something that always misses
-    return globals.physics_scale * 2;
-  }
-
   //returns vector between particles and distance_squared if it collides
   fn collides(p1: Particle, p2: Particle) -> Collision {
-    // TODO: implement, for now not colliding
-    return Collision(false, vec2i(0, 0), 0);
+    let diff = p1.position - p2.position;
+    let dot = dot(diff, diff);
+
+    // each particle has a diameter of 1 unit of globals.size. Which is 1 globals.physics_scale.
+    // Particle collide if their distance is shorter than 2x the radius. (== diameter)
+    // compare squared values to avoid doing sqrt()
+    let hit = dot < globals.physics_scale * globals.physics_scale;
+
+    return Collision(hit, diff, dot);
   }
 
   // returns the amount of displacement for the particle
-  // TODO: potential optimization as we also know the displacement of the other particle.
-  // if other particle index < this particle index, we have already calculated for both.
-  fn bounce(diff: vec2i, magnitude_squared: i32) -> vec2i {
-    return vec2i(1,1);
+  // the other particle has the inverse displacement. Since all particles are equally heavy.
+  fn bounce(diff: vec2i, dot: i32) -> vec2i {
+    // since particles are the same size and have the same mass we do not need to take them into account. 
+    // and we can just move both particles in the other direction by some amount to, after many iterations, approach their desired distance.
+    return (diff * 3) / 8; // == (diff / 2) * 0.75, moving both particles a part of half the distance they need.
   }
 
   @compute @workgroup_size(64)
@@ -113,61 +116,31 @@ const shader = /*wgsl*/`
       if(id.x >= arrayLength(&particles)){return;}
 
       let particle_index = id.x;
+      let particle_displacement_index = particle_index * 2;
       let p = particles[particle_index];
       let neighbours = getNeighbours(p.position);
 
       for (var i: u32 = 0; i < neighbours.count ; i = i + 1) {
         let n_index = neighbours.neighbour[i]; // get neighbour index
+        if(particle_index >= n_index) {continue;} // skip self and avoid doing double collision calculations.
         let n = particles[n_index];
         
         var collision = collides(p, n);
         if(!collision.hit) {continue;}
 
-        var displacement = bounce(collision.diff, collision.mag_sq);
+        var displacement = bounce(collision.diff, collision.dot);
 
         // set displacement values in buffer
         // Use atomicAdd to ensure safe writing
-        let displacement_index = particle_index * 2;
-        atomicAdd(&particle_displacement[displacement_index], displacement.x);
-        atomicAdd(&particle_displacement[displacement_index + 1], displacement.y);
+        let n_displacement_index = n_index * 2;
+        // displace particle
+        atomicAdd(&particle_displacement[particle_displacement_index], displacement.x);
+        atomicAdd(&particle_displacement[particle_displacement_index + 1], displacement.y);
+        // displace neighbour
+        atomicAdd(&particle_displacement[n_displacement_index], -displacement.x);
+        atomicAdd(&particle_displacement[n_displacement_index + 1], -displacement.y);
       }
   }
-
-  // radius == physicsScale
-
-  //const dot1Pos = this.reuseVec1.setXY(x, y)
-    //   const dot2Pos = this.reuseVec2.setXY(x2, y2)
-    //   const dot1Radius = this.radius
-    //   const dot2Radius = this.radius
-    //   const vec = dot1Pos.subVec(dot2Pos)
-    //   const disSq = vec.magSq()
-    //   const disMin = dot1Radius + dot2Radius
-    //   const disMinSq = disMin * disMin
-    //   if (disSq < disMinSq) {
-    //     // we are colliding
-    //     const dist = Math.sqrt(disSq)
-    //     const normal = vec.divNr(dist)
-    //     const dot1Mass = this.mass
-    //     const dot2Mass = this.mass
-    //     const totalMass = dot1Mass + dot2Mass
-    //     const dot1MassEffect = dot1Mass / totalMass
-    //     const dot2MassEffect = dot2Mass / totalMass
-    //     const coeff = 0.75
-    //     const delta = 0.5 * coeff * (dist - disMin)
-    //     // Update positions
-    //     this.reuseVec2.setVec(normal)
-    //     const dot1Translation = normal.mul(-dot2MassEffect * delta)
-    //     const dot2Translation = this.reuseVec2.mul(dot1MassEffect * delta)
-    //     this.reuseResult.x1 = dot1Translation.x
-    //     this.reuseResult.y1 = dot1Translation.y
-    //     this.reuseResult.x2 = dot2Translation.x
-    //     this.reuseResult.y2 = dot2Translation.y
-
-    //     return this.reuseResult
-    //   }
-    // }
-
-
 `
 
 export default class CollisionPass {
