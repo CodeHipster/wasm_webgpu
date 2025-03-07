@@ -158,7 +158,7 @@ export default class CollisionPass {
     this._debug = true;
   }
 
-  async logDebug() {
+  async debugLog() {
     if (!this._debug) {
       console.log("debug not enabled on CollisionPass")
       return;
@@ -168,8 +168,9 @@ export default class CollisionPass {
     await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
     const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
     this.displacementDebugBuffer.unmap(); // give control back to gpu
+    console.log(debugDisplacement);
     for (let i = 0; i < debugDisplacement.length; i = i + 2) {
-      console.log("x: " + debugDisplacement[i] / this.physicsScale, "y: " + debugDisplacement[i + 1] / this.physicsScale)
+      console.log(`index: ${i / 2} x: ${debugDisplacement[i] / this.physicsScale}, y: ${debugDisplacement[i + 1] / this.physicsScale}`)
     }
   }
 

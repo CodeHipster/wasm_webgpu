@@ -16,7 +16,7 @@ export default class GridSortPass {
     this._debug = true;
   }
 
-  async logBuffer() {
+  async debugLog() {
     if (!this._debug) {
       console.log("Debug is disabled on GridSortPass.");
       return
@@ -31,20 +31,15 @@ export default class GridSortPass {
     this.gridCountDebugBuffer.unmap(); // give control back to gpu
 
     console.log("logging grid")
-    for (const [index, value] of debugGrid.entries()) {
-      if (value == 0) continue;
-      const cell = Math.floor(index / 30)
-      const x = cell % this.size;
-      const y = Math.floor(cell / this.size);
-      console.log(`cell: ${cell}, x: ${x}, y: ${y}, value:${value}`);
-    }
-
-    console.log("logging grid count")
-    for (const [index, value] of debugGridCount.entries()) {
-      if (value == 0) continue;
+    for (const [index, count] of debugGridCount.entries()) {
+      if (count == 0) continue;
       const x = index % this.size;
       const y = Math.floor(index / this.size);
-      console.log(`x: ${x}, y: ${y}, value:${value}`);
+      console.log(`x: ${x}, y: ${y}, count:${count}`);
+      for (let i = 0; i < count; i++) {
+        const p_index = debugGrid[index * 30 + i]
+        console.log(`  particle:${p_index} `);
+      }
     }
   }
 
