@@ -1,6 +1,7 @@
 import GlobalsBuffer from "./globals-buffer.js";
 import ParticleBuffer from "./particle-buffer.js";
 import CollisionPass from "./passes/collision-pass.js";
+import DisplacementPass from "./passes/displacement-pass.js";
 import GravityPass from "./passes/gravity-pass.js";
 import GridSortPass from "./passes/grid-sort-pass.js";
 import RenderPass from "./passes/render-pass.js";
@@ -40,6 +41,8 @@ export default class Engine {
     const gridBuffer = this.gridSortPass.gridBuffer;
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsBuffer, particleDeviceBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
+
+    this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, particleDeviceBuffer, workgroupCount);
   }
 
   start() {
@@ -62,8 +65,10 @@ export default class Engine {
     this.gridSortPass.pass(commandEncoder);
 
     // Collision pass
+    this.collisionPass.pass(commandEncoder);
 
     // Displacement pass
+    this.displacementPass.pass(commandEncoder);
 
     // copy debug buffers. Informing the gpu to copy the data to the debug buffer.
     // this.ParticleBuffer.copy(commandEncoder);

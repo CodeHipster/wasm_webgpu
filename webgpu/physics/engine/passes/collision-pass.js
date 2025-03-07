@@ -174,6 +174,9 @@ export default class CollisionPass {
   }
 
   pass(commandEncoder) {
+    // wipe buffers to remove data from previous pass
+    commandEncoder.clearBuffer(this.displacementBuffer);
+
     const pass = commandEncoder.beginComputePass();
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.bindGroup);
