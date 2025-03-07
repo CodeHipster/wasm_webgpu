@@ -26,7 +26,7 @@ export default class GlobalsBuffer{
     // set the values in the correct place for the uniform struct in wgsl.
     // globals.set([0, -10 * physicsScale], 0) // gravity
     // TODO: make gravity configurable.
-    globals.set([0, 0], 0) // gravity
+    globals.set([0, -10 * physicsScale], 0) // gravity
     globals.set([min, max], 2) // min and max position bounds
     globals.set([physicsScale, renderScale], 4) // scale
     globals.set([stepsPerSecondSquared], 6)

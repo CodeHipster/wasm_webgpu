@@ -42,11 +42,31 @@ export default class ParticleBuffer {
     });
 
     // Initialize particle positions
-    // let particleData = this._randomParticles(particleCount, range, max);
-    let particleData = this._alignedParticles(particleCount, min, max, physicsScale)
+    let particleData = this._randomParticles(particleCount, range, max);
+    // let particleData = this._stackedParticles(particleCount, min, max, physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
+  }
+  
+  _stackedParticles(particleCount, min, max, physicsScale){
+    let particleData = new Int32Array(particleCount * 4);
+    let x = min + physicsScale;
+    let y = max - physicsScale;
+    let step = physicsScale*3;
+    for (let i = 0; i < particleCount; i++) {
+      // Store as flat data in an array
+      if( x >= max) { x = min - physicsScale; } // roll over to next line
+      if( y <= min) { y = max - physicsScale; x += step;}
+      // position
+      particleData[i * 4] = x ;
+      particleData[i * 4 + 1] = y;
+      // previousPosition, start at the same location, which means there is no initial velocity.
+      particleData[i * 4 + 2] = x;
+      particleData[i * 4 + 3] = y;
+      y -= step
+    }
+    return particleData;
   }
 
   _alignedParticles(particleCount, min, max, physicsScale){
