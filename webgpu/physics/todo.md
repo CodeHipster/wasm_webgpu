@@ -42,6 +42,12 @@ When calculating displacement add to storage
 
 on the next pass, apply displacement to each particle.
 
+#### debugging collision detection
+- add color to particles
+- render on a different scale
+- render circles
+- make engine manually steppable
+
 
 ### detect refreshrate of browser instead of assuming 60
 Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.

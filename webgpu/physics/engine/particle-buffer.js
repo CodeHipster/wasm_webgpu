@@ -43,10 +43,32 @@ export default class ParticleBuffer {
 
     // Initialize particle positions
     let particleData = this._randomParticles(particleCount, range, max);
-    // let particleData = this._stackedParticles(particleCount, min, max, physicsScale);
+    // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
+  }
+
+  _particleCollision(particleCount, min, max, physicsScale){
+    let particleData = new Int32Array(particleCount * 4);
+    let x = 0
+    let y = max - physicsScale *2;
+
+    // position
+    particleData[0 * 4] = x - physicsScale * 2;
+    particleData[0 * 4 + 1] = y;
+    // previousPosition, moving at x unit per second.
+    particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
+    particleData[0 * 4 + 3] = y;
+    
+    // position
+    particleData[1 * 4] = x + physicsScale * 2;
+    particleData[1 * 4 + 1] = y + physicsScale * 0.5;
+    // previousPosition, moving at x unit per second.
+    particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
+    particleData[1 * 4 + 3] = y + physicsScale * 0.5;
+
+    return particleData;
   }
   
   _stackedParticles(particleCount, min, max, physicsScale){
