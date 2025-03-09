@@ -1,6 +1,7 @@
 export default class ParticleBuffer {
   constructor(device, particleCount, range, min, max, physicsScale) {
     this.buffer = this._buffer(device, particleCount, range, min, max, physicsScale);
+    this.colorBuffer = this._colorBuffer(device, particleCount)
     this.debugBuffer = this._debugBuffer(device, this.buffer)
   }
 
@@ -32,6 +33,34 @@ export default class ParticleBuffer {
     }
   }
 
+  _colorBuffer(device, particleCount){
+    // Create particle color buffer
+    const bufferSize = particleCount * 4 * 4; // 4 floats for each color (float is 4 bytes)
+    const particleBuffer = device.createBuffer({
+      label: 'particle color buffer',
+      size: bufferSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+    });
+
+    // Initialize particle colors
+    let colors = new Float32Array(particleCount * 4);
+    colors.fill(1.0); // make all white
+
+    // rgba format
+    colors[0] = 1.0; // particle 1 is red
+    colors[1] = 0.0; 
+    colors[2] = 0.0; 
+    colors[3] = 1.0; 
+    colors[4] = 0.0; 
+    colors[5] = 1.0; // particle 2 is green
+    colors[6] = 0.0; 
+    colors[7] = 1.0; 
+    
+    device.queue.writeBuffer(particleBuffer, 0, colors);
+
+    return particleBuffer;
+  }
+
   _buffer(device, particleCount, range, min, max, physicsScale) {
     // Create particle buffer (shared between compute & render)
     const bufferSize = particleCount * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
@@ -42,8 +71,8 @@ export default class ParticleBuffer {
     });
 
     // Initialize particle positions
-    let particleData = this._randomParticles(particleCount, range, max);
-    // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
+    // let particleData = this._randomParticles(particleCount, range, max);
+    let particleData = this._particleCollision(particleCount, min, max, physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
@@ -51,18 +80,18 @@ export default class ParticleBuffer {
 
   _particleCollision(particleCount, min, max, physicsScale){
     let particleData = new Int32Array(particleCount * 4);
-    let x = 0
+    let x = physicsScale / 2
     let y = max - physicsScale *2;
 
     // position
-    particleData[0 * 4] = x - physicsScale * 2;
+    particleData[0 * 4] = x - physicsScale * 4;
     particleData[0 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
     particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
     particleData[0 * 4 + 3] = y;
     
     // position
-    particleData[1 * 4] = x + physicsScale * 2;
+    particleData[1 * 4] = x + physicsScale * 4;
     particleData[1 * 4 + 1] = y + physicsScale * 0.5;
     // previousPosition, moving at x unit per second.
     particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 

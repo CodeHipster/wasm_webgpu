@@ -26,14 +26,17 @@ export default class Engine {
 
     const workgroupCount = this.particleCount / 64 + 1
 
-    const globalsBuffer = new GlobalsBuffer(device, size, physicsScale, renderScale, min, max, this.stepsPerSecond).buffer;
+    const gravity = [0, 0];
+    // const gravity = [0, -10 * physicsScale]
+    const globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond).buffer;
 
     this.particleBuffer = new ParticleBuffer(device, particleCount, range, min, max, physicsScale);
     const particleDeviceBuffer = this.particleBuffer.buffer;
+    const colorBuffer = this.particleBuffer.colorBuffer;
     // this.particleBuffer.debug(physicsScale)
 
     this.gravityPass = new GravityPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount);
-    this.renderPass = new RenderPass(device, textureFormat, globalsBuffer, particleDeviceBuffer, particleCount);
+    this.renderPass = new RenderPass(device, textureFormat, globalsBuffer, particleDeviceBuffer, colorBuffer, particleCount);
 
     this.gridSortPass = new GridSortPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount, size, particlesPerCell)
     // this.gridSortPass.debug()

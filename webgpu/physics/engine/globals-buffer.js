@@ -1,12 +1,12 @@
 // TODO: split globals up in multiple buffers that better match the compute & render passes;
 export default class GlobalsBuffer{
 
-  constructor(device, size, physicsScale, renderScale, min, max, stepsPerSecond){
+  constructor(device, gravity, size, physicsScale, renderScale, min, max, stepsPerSecond){
     const stepsPerSecondSquared = stepsPerSecond * stepsPerSecond;
-    this.buffer = this._buffer(device, size, physicsScale, renderScale, min, max, stepsPerSecondSquared)
+    this.buffer = this._buffer(device, gravity, size, physicsScale, renderScale, min, max, stepsPerSecondSquared)
   }
 
-  _buffer(device, size, physicsScale, renderScale, min, max, stepsPerSecondSquared) {
+  _buffer(device, gravity, size, physicsScale, renderScale, min, max, stepsPerSecondSquared) {
     // Create uniform with global variables
     const globalsBufferSize =
       2 * 4 + // gravity is 2 i32 (4bytes each)
@@ -24,9 +24,7 @@ export default class GlobalsBuffer{
     const globals = new Int32Array(globalsBufferSize / 4);
 
     // set the values in the correct place for the uniform struct in wgsl.
-    globals.set([0, -10 * physicsScale], 0) // gravity
-    // TODO: make gravity configurable.
-    // globals.set([0, 0 * physicsScale], 0) // gravity
+    globals.set(gravity, 0) // gravity
     globals.set([min, max], 2) // min and max position bounds
     globals.set([physicsScale, renderScale], 4) // scale
     globals.set([stepsPerSecondSquared], 6)

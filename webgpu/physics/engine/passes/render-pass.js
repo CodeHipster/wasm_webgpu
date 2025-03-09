@@ -1,10 +1,10 @@
 export default class RenderPass {
 
-  constructor(device, textureFormat, globalsBuffer, particleBuffer, particleCount) {
+  constructor(device, textureFormat, globalsBuffer, particleBuffer, colorBuffer, particleCount) {
     this.vertexBuffer = particleBuffer; // Using the particle buffer as input for the vertex shader
     this.particleCount = particleCount;
     this.pipeline = this._renderPipeline(device, textureFormat)
-    this.bindGroup = this._renderBindGroup(device, globalsBuffer, particleBuffer, this.pipeline)
+    this.bindGroup = this._renderBindGroup(device, globalsBuffer, particleBuffer, colorBuffer, this.pipeline)
   }
 
   pass(commandEncoder, context) {
@@ -46,12 +46,14 @@ export default class RenderPass {
     });
   }
 
-  _renderBindGroup(device, globalsBuffer, particleBuffer, pipeline) {
+  _renderBindGroup(device, globalsBuffer, particleBuffer, colorBuffer, pipeline) {
     return device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
-        { binding: 1, resource: { buffer: globalsBuffer } }]
+        { binding: 1, resource: { buffer: globalsBuffer } },
+        { binding: 2, resource: { buffer: colorBuffer } },
+      ]
     });
   }
 }
@@ -66,7 +68,7 @@ const shader = /*wgsl*/`
     sps_2: i32, // steps per second squared
     size: i32, // size of the simulation
   };
-
+  
   struct Particle {
     position: vec2<i32>,
     prev_position: vec2<i32>,
@@ -74,6 +76,7 @@ const shader = /*wgsl*/`
 
   @group(0) @binding(0) var<storage, read> particles: array<Particle>;
   @group(0) @binding(1) var<uniform> globals: GlobalVars;
+  @group(0) @binding(2) var<storage, read> colors: array<vec4f>;
 
   struct VertexOutput {
       @builtin(position) position: vec4<f32>,
@@ -87,7 +90,7 @@ const shader = /*wgsl*/`
       // Scale to clip space [-1,1]
       let f_pos = vec2f(f32(pos.x), f32(pos.y)) / f32(globals.render_scale); //possibly losing some precision here, but that should not affect where the particle ends up on screen too much.
       out.position = vec4<f32>(f_pos, 0.0, 1.0); // Normalize to clip space
-      out.color = vec4<f32>(1.0, 1.0, 1.0, 1.0); // White
+      out.color = colors[index];
       return out;
   }
 

@@ -13,7 +13,7 @@ The canvas will be 1000x1000 pixels.
 The box in which the particles live will be 1000x1000
 This means we will have to do a translation in the vertex shader to map it to -1, 1
 
-### integer values for pixel positions DONE
+### integer values for pixel positions - DONE
 since we have a max value of 1000 and a min of 0. we can scale the positions to be integer values
 This will give us the benefit to do atomic adds on position if multiple particles exert force at the same time.
 
@@ -23,7 +23,7 @@ so scale is: 4_000_000 / SIZE. e.g. 4_000
 position is: (pos - 100_000) / scale. e.g. (1_700_000 - 100_000) / 4_000 = 400
 scaled position is: (pos * scale) + 100_000
 
-### sort pixels into grid DONE
+### sort pixels into grid - DONE
 
 grid = 1000x1000
 each cell has space for 30 pixels
@@ -42,6 +42,9 @@ When calculating displacement add to storage
 
 on the next pass, apply displacement to each particle.
 
+Extra: Take velocity into account when particles collide. So that when we have a collision where the centers have already passed eachother, there is no slingshot, but a correct bounce.
+  - use cross product of velocity and diff? if positive or negative should tell us on which side it is. add a whole diameter to diff to compensate.
+  
 #### debugging collision detection
 - add color to particles
 - render on a different scale
