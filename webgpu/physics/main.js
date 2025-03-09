@@ -15,22 +15,23 @@ const PARTICLE_COUNT = 2
 
 async function main() {
 
-  var fps = new FPSTracker()
-  var controls = new Controls(256)
-  controls.addControls()
-
-  const context = setupCanvas(SIZE)
+  var fps = new FPSTracker();
+  
+  const context = setupCanvas(SIZE);
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat(); 
-  const device = await setupDevice(context, presentationFormat)
-
-  const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE)
+  const device = await setupDevice(context, presentationFormat);
+  
+  const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE);
+  const controls = new Controls(engine);
+  controls.addControlsToPage();
 
   engine.start();
   // engine.debug(true)
   
   async function renderLoop(timestamp) {
-    fps.update(timestamp)
-    engine.render(context)
+    fps.update(timestamp);
+    controls.stepCount(engine.step)
+    engine.render(context);
     requestAnimationFrame(renderLoop);
   }
 

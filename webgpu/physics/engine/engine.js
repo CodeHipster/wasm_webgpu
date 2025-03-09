@@ -23,6 +23,8 @@ export default class Engine {
     const min = range / -2;
     const max = range / 2;
     this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
+    this._speed = 100; // speed on which the simulation runs
+    this.step = 0;
 
     const workgroupCount = this.particleCount / 64 + 1
 
@@ -40,32 +42,50 @@ export default class Engine {
 
     this.gridSortPass = new GridSortPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount, size, particlesPerCell)
 
-
     const gridBuffer = this.gridSortPass.gridBuffer;
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsBuffer, particleDeviceBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
-    
+
     this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, particleDeviceBuffer, workgroupCount);
   }
 
-  debug(on){
-    this._debug = on;   
-    this.gridSortPass.debug(on)    
+  debug(on) {
+    this._debug = on;
+    this.gridSortPass.debug(on)
     this.particleBuffer.debug(on)
     this.collisionPass.debug(on, this.physicsScale)
   }
 
+  speed(percentage) {
+    this._speed = percentage;
+    clearInterval(this.physicsInterval);
+    this.physicsInterval = undefined;
+    this.start();
+  }
+
   start() {
-    setInterval(this.physicsLoop, 1000 / this.stepsPerSecond)
+    this.physicsInterval = setInterval(this.physicsLoop, (1000 / (this.stepsPerSecond * (this._speed / 100))));
 
     // single step for debugging
     // this.physicsLoop()
+  }
+
+  stop() {
+    clearInterval(this.physicsInterval);
+    this.physicsInterval = undefined;
+  }
+
+  singleStep() {
+    if (!this.physicsInterval) { // if not running
+      this.physicsLoop();
+    }
   }
 
   // Separate physics loop from rendering, so they can run independently.
   // The render loop is tied to the requestAnimationFrame
   // The physics loop has no dependency. But we want to have a higher call rate to have less artifacts in the physics.
   physicsLoop = async () => {
+    this.step++;
     const commandEncoder = this.device.createCommandEncoder();
 
     // Gravity pass 
@@ -80,14 +100,14 @@ export default class Engine {
     // Displacement pass
     this.displacementPass.pass(commandEncoder);
 
-    if(this._debug){
+    if (this._debug) {
       // copy debug buffers. Informing the gpu to copy the data to the debug buffer.
       this.particleBuffer.copy(commandEncoder);
     }
 
     this.device.queue.submit([commandEncoder.finish()]);
 
-    if(this._debug){
+    if (this._debug) {
       // Debug logging, we have to log after finishing the command encoder. 
       // This will make sure the debug buffers are read after the physics logic is applied and the debug buffers are filled.
       await this.particleBuffer.debugLog();
@@ -102,6 +122,6 @@ export default class Engine {
     // Render Pass (Draw Particles)
     this.renderPass.pass(commandEncoder, context);
 
-    this.device.queue.submit([commandEncoder.finish()]);  
+    this.device.queue.submit([commandEncoder.finish()]);
   }
 }
