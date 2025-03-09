@@ -2,6 +2,7 @@ import FPSTracker from "./fps.js";
 import setupCanvas from "./canvas.js";
 import setupDevice from "./device.js";
 import Engine from "./engine/engine.js";
+import Controls from "./controls.js";
 
 // This is the size of pixels in the canvas
 // the size of the box in which the pixels live
@@ -15,6 +16,8 @@ const PARTICLE_COUNT = 2
 async function main() {
 
   var fps = new FPSTracker()
+  var controls = new Controls(256)
+  controls.addControls()
 
   const context = setupCanvas(SIZE)
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat(); 
