@@ -44,10 +44,10 @@ on the next pass, apply displacement to each particle.
 
 Extra: Take velocity into account when particles collide. So that when we have a collision where the centers have already passed eachother, there is no slingshot, but a correct bounce.
   - use cross product of velocity and diff? if positive or negative should tell us on which side it is. add a whole diameter to diff to compensate.
-  
+
 #### debugging collision detection
-- add color to particles
-- render on a different scale
+- DONE - add color to particles
+- render on a different scale, maybe use a different renderer https://webgpufundamentals.org/webgpu/lessons/webgpu-points.html
 - render circles
 - make engine manually steppable
 

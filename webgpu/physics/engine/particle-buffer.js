@@ -1,13 +1,13 @@
 export default class ParticleBuffer {
   constructor(device, particleCount, range, min, max, physicsScale) {
+    this.physicsScale = physicsScale;
     this.buffer = this._buffer(device, particleCount, range, min, max, physicsScale);
     this.colorBuffer = this._colorBuffer(device, particleCount)
     this.debugBuffer = this._debugBuffer(device, this.buffer)
   }
 
-  debug(physicsScale) {
-    this.physicsScale = physicsScale;
-    this._debug = true;
+  debug(on) {
+    this._debug = on;
   }
 
   async copy(commandEncoder) {

@@ -33,20 +33,26 @@ export default class Engine {
     this.particleBuffer = new ParticleBuffer(device, particleCount, range, min, max, physicsScale);
     const particleDeviceBuffer = this.particleBuffer.buffer;
     const colorBuffer = this.particleBuffer.colorBuffer;
-    // this.particleBuffer.debug(physicsScale)
+
 
     this.gravityPass = new GravityPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount);
     this.renderPass = new RenderPass(device, textureFormat, globalsBuffer, particleDeviceBuffer, colorBuffer, particleCount);
 
     this.gridSortPass = new GridSortPass(device, globalsBuffer, particleDeviceBuffer, workgroupCount, size, particlesPerCell)
-    // this.gridSortPass.debug()
+
 
     const gridBuffer = this.gridSortPass.gridBuffer;
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsBuffer, particleDeviceBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
-    // this.collisionPass.debug(physicsScale)
-
+    
     this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, particleDeviceBuffer, workgroupCount);
+  }
+
+  debug(on){
+    this._debug = on;   
+    this.gridSortPass.debug(on)    
+    this.particleBuffer.debug(on)
+    this.collisionPass.debug(on, this.physicsScale)
   }
 
   start() {
@@ -74,16 +80,20 @@ export default class Engine {
     // Displacement pass
     this.displacementPass.pass(commandEncoder);
 
-    // copy debug buffers. Informing the gpu to copy the data to the debug buffer.
-    // this.particleBuffer.copy(commandEncoder);
+    if(this._debug){
+      // copy debug buffers. Informing the gpu to copy the data to the debug buffer.
+      this.particleBuffer.copy(commandEncoder);
+    }
 
     this.device.queue.submit([commandEncoder.finish()]);
 
-    // Debug logging, we have to log after finishing the command encoder. 
-    // This will make sure the debug buffers are read after the physics logic is applied and the debug buffers are filled.
-    // await this.particleBuffer.debugLog();
-    // await this.gridSortPass.debugLog();
-    // await this.collisionPass.debugLog();
+    if(this._debug){
+      // Debug logging, we have to log after finishing the command encoder. 
+      // This will make sure the debug buffers are read after the physics logic is applied and the debug buffers are filled.
+      await this.particleBuffer.debugLog();
+      await this.gridSortPass.debugLog();
+      await this.collisionPass.debugLog();
+    }
   }
 
   render(context) {

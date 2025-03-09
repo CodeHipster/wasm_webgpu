@@ -23,6 +23,7 @@ async function main() {
   const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE)
 
   engine.start();
+  // engine.debug(true)
   
   async function renderLoop(timestamp) {
     fps.update(timestamp)

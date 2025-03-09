@@ -12,8 +12,8 @@ export default class GridSortPass {
     this.workgroupCount = workgroupCount;
   }
 
-  debug() {
-    this._debug = true;
+  debug(on) {
+    this._debug = on;
   }
 
   async debugLog() {

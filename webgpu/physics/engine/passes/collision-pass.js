@@ -161,9 +161,9 @@ export default class CollisionPass {
     this.workgroupCount = workgroupCount;
   }
 
-  debug(physicsScale) {
+  debug(on, physicsScale) {
     this.physicsScale = physicsScale;
-    this._debug = true;
+    this._debug = on;
   }
 
   async debugLog() {
