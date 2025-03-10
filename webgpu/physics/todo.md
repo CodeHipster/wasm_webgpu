@@ -49,7 +49,10 @@ Extra: Take velocity into account when particles collide. So that when we have a
 - DONE - add color to particles
 - render on a different scale, maybe use a different renderer https://webgpufundamentals.org/webgpu/lessons/webgpu-points.html
 - render circles
-- make engine manually steppable
+- DONE make engine manually steppable
+- log velocity
+- log physics scale values
+- be able to run until specific frame
 
 
 ### detect refreshrate of browser instead of assuming 60
