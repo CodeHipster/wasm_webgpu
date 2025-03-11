@@ -24,9 +24,6 @@ async function main() {
   const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE);
   const controls = new Controls(engine);
   controls.addControlsToPage();
-
-  engine.start();
-  // engine.debug(true)
   
   async function renderLoop(timestamp) {
     fps.update(timestamp);

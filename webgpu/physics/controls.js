@@ -3,7 +3,7 @@ export default class Controls {
   constructor(engine) {
     this.engine = engine;
     this.debug = false;
-    this.running = true;
+    this.running = engine.running();
   }
 
   stepCount(step) {

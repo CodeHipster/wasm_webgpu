@@ -49,6 +49,10 @@ export default class Engine {
     this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, particleDeviceBuffer, workgroupCount);
   }
 
+  running(){
+    return (this.physicsInterval == true)
+  }
+
   debug(on) {
     this._debug = on;
     this.gridSortPass.debug(on)
@@ -58,9 +62,10 @@ export default class Engine {
 
   speed(percentage) {
     this._speed = percentage;
-    clearInterval(this.physicsInterval);
-    this.physicsInterval = undefined;
-    this.start();
+    if(this.physicsInterval){
+      clearInterval(this.physicsInterval);
+      this.start();
+    }
   }
 
   start() {

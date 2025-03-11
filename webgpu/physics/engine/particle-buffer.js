@@ -24,12 +24,19 @@ export default class ParticleBuffer {
       return;
     }
 
-    console.log("logging particles")
+    console.log("### logging particles ###")
     await this.debugBuffer.mapAsync(GPUMapMode.READ);
     const debugParticle = new Int32Array(this.debugBuffer.getMappedRange().slice()); //copy data
     this.debugBuffer.unmap(); // give control back to gpu
     for (let i = 0; i < debugParticle.length; i = i + 4) {
-      console.log(`index: ${i/4}, x: ${debugParticle[i] / this.physicsScale}, y:${debugParticle[i + 1] / this.physicsScale}`)
+      const x = debugParticle[i];
+      const y = debugParticle[i+1];
+      const px = debugParticle[i+2]; //previous x
+      const py = debugParticle[i+3]; //previous y
+      console.log(`particle: ${i/4} 
+        grid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
+        physics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
+        phys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
     }
   }
 
