@@ -62,10 +62,31 @@ export default class Controls {
     });
 
     const stepButton = document.createElement('button');
-    stepButton.textContent = 'Step';    
+    stepButton.textContent = 'Single Step';    
     stepButton.addEventListener("click", () => {
       this.engine.singleStep()
     });
+
+    const stepToContainer = document.createElement('div');
+
+    // New input box and button for setting step number
+    const stepInput = document.createElement('input');
+    stepInput.type = 'number';
+    stepInput.placeholder = 'Enter step number';
+    stepInput.style.backgroundColor = "white";
+    stepInput.style.borderRadius = "2px";
+    stepInput.style.textAlign = "center";
+
+    const setStepButton = document.createElement('button');
+    setStepButton.textContent = 'Step to';
+    setStepButton.addEventListener("click", () => {
+      const stepNumber = parseInt(stepInput.value, 10);
+      if (!isNaN(stepNumber)) {
+        this.engine.stepTo(stepNumber);
+      }
+    });
+    stepToContainer.appendChild(setStepButton); // Add button to container
+    stepToContainer.appendChild(stepInput); // Add input box to container
 
     container.appendChild(this.stepCountDiv);
     container.appendChild(ips);
@@ -73,6 +94,7 @@ export default class Controls {
     container.appendChild(debugButton);
     container.appendChild(startStopButton);
     container.appendChild(stepButton);
+    container.appendChild(stepToContainer);
 
     document.body.appendChild(container);
   }

@@ -81,6 +81,19 @@ export default class Engine {
     }
   }
 
+  stepTo(target){
+    if (!this.physicsInterval && target > this.step) { // if not running
+      // disable debug while quickstepping
+      const prevDebug = this._debug
+      this.debug(false)
+      const steps = target - this.step;
+      for (let i = 0; i < steps; i++) {
+        this.physicsLoop();
+      }
+      this.debug(prevDebug)
+    }
+  }
+
   // Separate physics loop from rendering, so they can run independently.
   // The render loop is tied to the requestAnimationFrame
   // The physics loop has no dependency. But we want to have a higher call rate to have less artifacts in the physics.
