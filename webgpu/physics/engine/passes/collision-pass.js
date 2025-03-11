@@ -156,7 +156,7 @@ export default class CollisionPass {
     this.displacementDebugBuffer = this._displacementDebugBuffer(device, this.displacementBuffer)
     this.collisionCountBuffer = this._collisionCountBuffer(device);
     this.collisionCountDebugBuffer = this._collisionCountDebugBuffer(device)
-    
+
     this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.displacementBuffer, this.collisionCountBuffer, this.pipeline);
     this.workgroupCount = workgroupCount;
   }
@@ -172,20 +172,23 @@ export default class CollisionPass {
       return;
     }
 
-    console.log("logging displacements")
-    await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
-    const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
-    this.displacementDebugBuffer.unmap(); // give control back to gpu
-    console.log(debugDisplacement);
-    for (let i = 0; i < debugDisplacement.length; i = i + 2) {
-      console.log(`index: ${i / 2} x: ${debugDisplacement[i] / this.physicsScale}, y: ${debugDisplacement[i + 1] / this.physicsScale}`)
-    }
+    console.log("### logging displacements ###")
 
     await this.collisionCountDebugBuffer.mapAsync(GPUMapMode.READ);
     const collisionCount = new Uint32Array(this.collisionCountDebugBuffer.getMappedRange().slice()); //copy data
     this.collisionCountDebugBuffer.unmap(); // give control back to gpu
-    console.log(collisionCount);
+    console.log(`collisions: ${collisionCount[0]}`);
 
+    await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
+    const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
+    this.displacementDebugBuffer.unmap(); // give control back to gpu
+    for (let i = 0; i < debugDisplacement.length; i = i + 2) {
+      const x = debugDisplacement[i];
+      const y = debugDisplacement[i + 1];
+      console.log(`particle: ${i / 2} 
+\tgrid    x: ${(x / this.physicsScale).toString().padStart(10,' ')}, y: ${(y / this.physicsScale).toString().padStart(10,' ')}
+\tphysics x: ${x.toString().padStart(10,' ')}, y: ${y.toString().padStart(10,' ')}`)
+    }
   }
 
   pass(commandEncoder) {
@@ -241,7 +244,7 @@ export default class CollisionPass {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
     });
   }
-  
+
   _displacementDebugBuffer(device, buffer) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({
@@ -250,7 +253,7 @@ export default class CollisionPass {
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
-  
+
   _collisionCountBuffer(device) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({
@@ -259,7 +262,7 @@ export default class CollisionPass {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
     });
   }
-  
+
   _collisionCountDebugBuffer(device) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({

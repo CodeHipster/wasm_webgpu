@@ -126,6 +126,7 @@ export default class Engine {
     this.device.queue.submit([commandEncoder.finish()]);
 
     if (this._debug) {
+      console.log(`\nStep: ${this.step}`)
       // Debug logging, we have to log after finishing the command encoder. 
       // This will make sure the debug buffers are read after the physics logic is applied and the debug buffers are filled.
       await this.particleBuffer.debugLog();

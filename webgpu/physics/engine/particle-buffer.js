@@ -34,9 +34,9 @@ export default class ParticleBuffer {
       const px = debugParticle[i+2]; //previous x
       const py = debugParticle[i+3]; //previous y
       console.log(`particle: ${i/4} 
-        grid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
-        physics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
-        phys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
+\tgrid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
+\tphysics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
+\tphys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
     }
   }
 
