@@ -10,8 +10,8 @@ export default class ParticleBuffer {
     return this._gpuBuffer;
   }
 
-  buildDebugBuffer(){
-    return new ParticleDebugBuffer(this.device, this._gpuBuffer.size, this.physicsScale);
+  buildDebugBuffer(pass){
+    return new ParticleDebugBuffer(this.device, this._gpuBuffer.size, this.physicsScale, pass);
   }
 
   _colorBuffer(device, particleCount){
@@ -141,19 +141,19 @@ export default class ParticleBuffer {
 }
 
 class ParticleDebugBuffer{
-  constructor(device, size, physicsScale){
+  constructor(device, size, physicsScale, pass){
     this.physicsScale = physicsScale;
-    this._gpuBuffer = this._createGpuBuffer(device, size);
+    this._gpuBuffer = this._createGpuBuffer(device, size, pass);
   }
 
   gpuBuffer(){
     return this._gpuBuffer;
   }
 
-  _createGpuBuffer(device, size) {
+  _createGpuBuffer(device, size, pass) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({
-      label: 'particle debug buffer',
+      label: `particle debug buffer for ${pass}`,
       size: size,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });

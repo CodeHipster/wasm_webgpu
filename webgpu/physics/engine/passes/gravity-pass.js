@@ -42,7 +42,7 @@ export default class GravityPass {
     this.pipeline = this._pipeline(device);
     this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer.gpuBuffer(), this.pipeline);
     this.particleBuffer = particleBuffer;
-    this.particleDebugBuffer = particleBuffer.buildDebugBuffer();
+    this.particleDebugBuffer = particleBuffer.buildDebugBuffer("gravity-pass");
     console.log(this.particleDebugBuffer.gpuBuffer());
     this.workgroupCount = workgroupCount;
   }

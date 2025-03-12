@@ -29,7 +29,7 @@ export default class DisplacementPass {
   constructor(device, displacementBuffer, particleBuffer, workgroupCount) {
     this.pipeline = this._pipeline(device);
     this.particleBuffer = particleBuffer;
-    this.particleDebugBuffer = particleBuffer.buildDebugBuffer();
+    this.particleDebugBuffer = particleBuffer.buildDebugBuffer("displacement-pass");
     this.bindGroup = this._bindGroup(device, displacementBuffer, particleBuffer.gpuBuffer(), this.pipeline);
     this.workgroupCount = workgroupCount;
   }
