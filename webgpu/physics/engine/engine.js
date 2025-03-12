@@ -45,7 +45,7 @@ export default class Engine {
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsBuffer, particleGpuBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
 
-    this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, particleGpuBuffer, workgroupCount);
+    this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
   }
 
   running(){
@@ -126,6 +126,7 @@ export default class Engine {
       await this.gravityPass.debugLog();
       await this.gridSortPass.debugLog();
       await this.collisionPass.debugLog();
+      await this.displacementPass.debugLog();
     }
   }
 

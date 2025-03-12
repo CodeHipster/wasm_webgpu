@@ -28,7 +28,9 @@ export default class DisplacementPass {
 
   constructor(device, displacementBuffer, particleBuffer, workgroupCount) {
     this.pipeline = this._pipeline(device);
-    this.bindGroup = this._bindGroup(device, displacementBuffer, particleBuffer, this.pipeline);
+    this.particleBuffer = particleBuffer;
+    this.particleDebugBuffer = particleBuffer.buildDebugBuffer();
+    this.bindGroup = this._bindGroup(device, displacementBuffer, particleBuffer.gpuBuffer(), this.pipeline);
     this.workgroupCount = workgroupCount;
   }
 
@@ -38,6 +40,18 @@ export default class DisplacementPass {
     pass.setBindGroup(0, this.bindGroup);
     pass.dispatchWorkgroups(this.workgroupCount);
     pass.end();
+    
+    if(this.debug){
+      commandEncoder.copyBufferToBuffer(this.particleBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer().size);
+    }
+  }
+
+  debug(on) {
+    this._debug = on;
+  }
+
+  async debugLog() {
+    this.particleDebugBuffer.debugLog("displacement-pass")
   }
 
   _pipeline(device) {
