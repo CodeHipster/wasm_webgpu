@@ -40,7 +40,10 @@ export default class GravityPass {
 
   constructor(device, globalsBuffer, particleBuffer, workgroupCount) {
     this.pipeline = this._pipeline(device);
-    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, this.pipeline);
+    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer.gpuBuffer(), this.pipeline);
+    this.particleBuffer = particleBuffer;
+    this.particleDebugBuffer = particleBuffer.buildDebugBuffer();
+    console.log(this.particleDebugBuffer.gpuBuffer());
     this.workgroupCount = workgroupCount;
   }
 
@@ -52,8 +55,16 @@ export default class GravityPass {
     pass.end();
     
     if(this.debug){
-      commandEncoder.copyBufferToBuffer(this.particleBuffer, 0, this.particleDebugBuffer, 0, this.particleDebugBuffer.size);
+      commandEncoder.copyBufferToBuffer(this.particleBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer().size);
     }
+  }
+
+  debug(on) {
+    this._debug = on;
+  }
+
+  async debugLog() {
+    this.particleDebugBuffer.debugLog("gravity-pass")
   }
 
   _pipeline(device) {

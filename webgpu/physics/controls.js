@@ -6,8 +6,10 @@ export default class Controls {
     this.running = engine.running();
   }
 
-  stepCount(step) {
-    this.stepCountDiv.textContent = `step: ${step}`;
+  update() {
+    
+    this.ips.textContent = `speed: ${this.engine._speed}`;
+    this.stepCountDiv.textContent = `step: ${this.engine.step}`;
   }
 
   addControlsToPage() {
@@ -16,14 +18,14 @@ export default class Controls {
     container.style.flexDirection = 'column';
     container.style.gap = '10px';
 
-    const ips = document.createElement('div');
-    ips.textContent = `speed: 100`;
-    ips.style.backgroundColor = "white";
-    ips.style.borderRadius = "2px";
-    ips.style.textAlign = "center";
+    this.ips = document.createElement('div');
+    this.ips.textContent = `speed: 100`;
+    this.ips.style.backgroundColor = "white";
+    this.ips.style.borderRadius = "2px";
+    this.ips.style.textAlign = "center";
 
     this.stepCountDiv = document.createElement('div');
-    this.stepCountDiv.textContent = `step: 0`;
+    this.stepCountDiv.textContent = `step:`;
     this.stepCountDiv.style.backgroundColor = "white";
     this.stepCountDiv.style.borderRadius = "2px";
     this.stepCountDiv.style.textAlign = "center";
@@ -35,9 +37,7 @@ export default class Controls {
     slider.value = 100;
 
     const eng = this.engine;
-    console.log(eng)
     slider.addEventListener("input", function () {
-      ips.textContent = `speed: ${this.value}`;
       eng.speed(this.value);
     });
 
@@ -89,7 +89,7 @@ export default class Controls {
     stepToContainer.appendChild(stepInput); // Add input box to container
 
     container.appendChild(this.stepCountDiv);
-    container.appendChild(ips);
+    container.appendChild(this.ips);
     container.appendChild(slider);
     container.appendChild(debugButton);
     container.appendChild(startStopButton);

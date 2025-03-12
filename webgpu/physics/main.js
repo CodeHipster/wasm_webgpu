@@ -27,7 +27,7 @@ async function main() {
   
   async function renderLoop(timestamp) {
     fps.update(timestamp);
-    controls.stepCount(engine.step)
+    controls.update()
     engine.render(context);
     requestAnimationFrame(renderLoop);
   }

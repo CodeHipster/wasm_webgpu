@@ -1,43 +1,17 @@
 export default class ParticleBuffer {
   constructor(device, particleCount, range, min, max, physicsScale) {
+    this.device = device;
     this.physicsScale = physicsScale;
-    this.buffer = this._buffer(device, particleCount, range, min, max, physicsScale);
-    this.colorBuffer = this._colorBuffer(device, particleCount)
-    this.debugBuffer = this._debugBuffer(device, this.buffer)
+    this._gpuBuffer = this._buffer(device, particleCount, range, min, max, physicsScale);
+    this._gpuColorBuffer = this._colorBuffer(device, particleCount)
   }
 
-  debug(on) {
-    this._debug = on;
+  gpuBuffer(){
+    return this._gpuBuffer;
   }
 
-  async copy(commandEncoder) {
-    if (!this._debug) {
-      console.log("debug not enabled on ParticleBuffer")
-      return;
-    }
-    commandEncoder.copyBufferToBuffer(this.buffer, 0, this.debugBuffer, 0, this.debugBuffer.size);
-  }
-
-  async debugLog() {
-    if (!this._debug) {
-      console.log("debug not enabled on ParticleBuffer")
-      return;
-    }
-
-    console.log("### logging particles ###")
-    await this.debugBuffer.mapAsync(GPUMapMode.READ);
-    const debugParticle = new Int32Array(this.debugBuffer.getMappedRange().slice()); //copy data
-    this.debugBuffer.unmap(); // give control back to gpu
-    for (let i = 0; i < debugParticle.length; i = i + 4) {
-      const x = debugParticle[i];
-      const y = debugParticle[i+1];
-      const px = debugParticle[i+2]; //previous x
-      const py = debugParticle[i+3]; //previous y
-      console.log(`particle: ${i/4} 
-\tgrid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
-\tphysics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
-\tphys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
-    }
+  buildDebugBuffer(){
+    return new ParticleDebugBuffer(this.device, this._gpuBuffer.size, this.physicsScale);
   }
 
   _colorBuffer(device, particleCount){
@@ -164,13 +138,41 @@ export default class ParticleBuffer {
     }
     return particleData;
   }
+}
 
-  _debugBuffer(device, particleBuffer) {
+class ParticleDebugBuffer{
+  constructor(device, size, physicsScale){
+    this.physicsScale = physicsScale;
+    this._gpuBuffer = this._createGpuBuffer(device, size);
+  }
+
+  gpuBuffer(){
+    return this._gpuBuffer;
+  }
+
+  _createGpuBuffer(device, size) {
     // create a buffer on the GPU to get a copy of the results
     return device.createBuffer({
       label: 'particle debug buffer',
-      size: particleBuffer.size,
+      size: size,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
+  }
+
+  async debugLog(pass) {
+    console.log(`### logging particles from ${pass} ###`)
+    await this._gpuBuffer.mapAsync(GPUMapMode.READ);
+    const debugParticle = new Int32Array(this._gpuBuffer.getMappedRange().slice()); //copy data
+    this._gpuBuffer.unmap(); // give control back to gpu
+    for (let i = 0; i < debugParticle.length; i = i + 4) {
+      const x = debugParticle[i];
+      const y = debugParticle[i+1];
+      const px = debugParticle[i+2]; //previous x
+      const py = debugParticle[i+3]; //previous y
+      console.log(`particle: ${i/4} 
+\tgrid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
+\tphysics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
+\tphys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
+    }
   }
 }
