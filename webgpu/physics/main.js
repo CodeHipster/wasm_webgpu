@@ -2,7 +2,7 @@ import FPSTracker from "./fps.js";
 import setupCanvas from "./canvas.js";
 import setupDevice from "./device.js";
 import Engine from "./engine/engine.js";
-import Controls from "./controls.js";
+import Controls from "./debug-controls.js";
 
 // This is the size of pixels in the canvas
 // the size of the box in which the pixels live
