@@ -1,4 +1,13 @@
 const shader = /* wgsl */`
+  struct GlobalVars {
+    gravity: vec2i, // (x,y) acceleration
+    min: i32,
+    max: i32,
+    physics_scale: i32, // for scaling down to grid size
+    rander_scale: i32, // for scaling down to clip_space
+    sps_2: i32, // steps per second squared
+    size: i32, // size of the simulation
+  };
 
   struct Particle {
     position: vec2<i32>,
@@ -12,6 +21,7 @@ const shader = /* wgsl */`
 
   @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
   @group(0) @binding(1) var<storage, read_write> particle_displacement: array<Displacement>; // Particle displacement 2 ints for each particle. x & y
+  @group(0) @binding(2) var<uniform> globals: GlobalVars;
 
   @compute @workgroup_size(64)
   fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -19,18 +29,22 @@ const shader = /* wgsl */`
     let i = id.x;
 
     let displacement = vec2i(atomicLoad(&particle_displacement[i].x), atomicLoad(&particle_displacement[i].y));
-        
-    particles[i].position = particles[i].position + displacement;
+
+    let position = particles[i].position + displacement;
+    // Apply boundary constraints (keep particles inside a the box)
+    particles[i].position = clamp(position, vec2<i32>(globals.min), vec2<i32>(globals.max));
   }
 `;
 
+// This pass applies displacements from collision 
+// and then clips the position to within the bounding box.
 export default class DisplacementPass {
 
-  constructor(device, displacementBuffer, particleBuffer, workgroupCount) {
+  constructor(device, globalsBuffer, displacementBuffer, particleBuffer, workgroupCount) {
     this.pipeline = this._pipeline(device);
     this.particleBuffer = particleBuffer;
     this.particleDebugBuffer = particleBuffer.buildDebugBuffer("displacement-pass");
-    this.bindGroup = this._bindGroup(device, displacementBuffer, particleBuffer.gpuBuffer(), this.pipeline);
+    this.bindGroup = this._bindGroup(device, globalsBuffer, displacementBuffer, particleBuffer.gpuBuffer(), this.pipeline);
     this.workgroupCount = workgroupCount;
   }
 
@@ -66,12 +80,14 @@ export default class DisplacementPass {
     });
   }
 
-  _bindGroup(device, displacementBuffer, particleBuffer, pipeline) {
+  _bindGroup(device, globalsBuffer, displacementBuffer, particleBuffer, pipeline) {
     return device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
-        { binding: 1, resource: { buffer: displacementBuffer } }]
+        { binding: 1, resource: { buffer: displacementBuffer } },
+        { binding: 2, resource: { buffer: globalsBuffer } },
+      ]
     });
   }
 }

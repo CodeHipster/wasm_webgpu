@@ -1,8 +1,8 @@
 import GlobalsBuffer from "./globals-buffer.js";
 import ParticleBuffer from "./particle-buffer.js";
 import CollisionPass from "./passes/collision-pass.js";
-import DisplacementPass from "./passes/displacement-pass.js";
-import GravityPass from "./passes/gravity-pass.js";
+import DisplacementClipPass from "./passes/displacement-clip-pass.js";
+import UpdateGravityClipPass from "./passes/update-gravity-clip-pass.js";
 import GridSortPass from "./passes/grid-sort-pass.js";
 import RenderPass from "./passes/render-pass.js";
 
@@ -28,15 +28,15 @@ export default class Engine {
 
     const workgroupCount = this.particleCount / 64 + 1
 
-    const gravity = [0, 0];
-    // const gravity = [0, -10 * physicsScale]
+    // const gravity = [0, 0];
+    const gravity = [0, -10 * physicsScale]
     const globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond).buffer;
 
     this.particleBuffer = new ParticleBuffer(device, particleCount, range, min, max, physicsScale);
     const particleGpuBuffer = this.particleBuffer.gpuBuffer();
     const colorBuffer = this.particleBuffer._gpuColorBuffer;
 
-    this.gravityPass = new GravityPass(device, globalsBuffer, this.particleBuffer, workgroupCount);
+    this.gravityPass = new UpdateGravityClipPass(device, globalsBuffer, this.particleBuffer, workgroupCount);
     this.renderPass = new RenderPass(device, textureFormat, globalsBuffer, particleGpuBuffer, colorBuffer, particleCount);
 
     this.gridSortPass = new GridSortPass(device, globalsBuffer, particleGpuBuffer, workgroupCount, size, particlesPerCell)
@@ -45,7 +45,7 @@ export default class Engine {
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsBuffer, particleGpuBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
 
-    this.displacementPass = new DisplacementPass(device, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
+    this.displacementPass = new DisplacementClipPass(device, globalsBuffer, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
   }
 
   running(){

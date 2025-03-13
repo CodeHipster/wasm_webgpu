@@ -36,6 +36,9 @@ const shader = /* wgsl */`
   }
 `;
 
+// This pass updates the particle position based on previous positions
+// And applies gravity forces
+// Then clips it to within the bounding box
 export default class GravityPass {
 
   constructor(device, globalsBuffer, particleBuffer, workgroupCount) {
