@@ -3,6 +3,13 @@ export default class GlobalsBuffer{
 
   constructor(device, gravity, size, physicsScale, renderScale, min, max, stepsPerSecond){
     const stepsPerSecondSquared = stepsPerSecond * stepsPerSecond;
+    this.gravity = gravity;
+    this.size = size;
+    this.physicsScale = physicsScale;
+    this.renderScale = renderScale;
+    this.min = min;
+    this.max = max;
+    this.stepsPerSecond = stepsPerSecond;
     this.buffer = this._buffer(device, gravity, size, physicsScale, renderScale, min, max, stepsPerSecondSquared)
   }
 
@@ -29,11 +36,24 @@ export default class GlobalsBuffer{
     globals.set([physicsScale, renderScale], 4) // scale
     globals.set([stepsPerSecondSquared], 6)
     globals.set([size], 7)
-    console.log(globals)
 
     // queue writing globals to the buffer
     device.queue.writeBuffer(globalsBuffer, 0, globals);
 
     return globalsBuffer;
+  }
+
+  debugLog(){
+    console.log(`Global variables:
+    gravity-physics: x: ${this.gravity[0]}, y: ${this.gravity[1]}
+    gravity-grid: x: ${this.gravity[0] / this.physicsScale}, y: ${this.gravity[1] / this.physicsScale}
+    grid-size: ${this.size}
+    physics-scale: ${this.physicsScale}
+    render-scale: ${this.renderScale}
+    min-physics: ${this.min}
+    max-physics: ${this.max}
+    min-grid: ${this.min / this.physicsScale}
+    max-grid: ${this.max / this.physicsScale}
+    stepsPerSecond: ${this.stepsPerSecond}`);
   }
 }

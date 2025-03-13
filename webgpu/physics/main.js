@@ -22,6 +22,7 @@ async function main() {
   const device = await setupDevice(context, presentationFormat);
   
   const engine = new Engine(device, presentationFormat, PARTICLE_COUNT, SIZE);
+  engine.debug(true);
   const controls = new Controls(engine);
   controls.addControlsToPage();
   

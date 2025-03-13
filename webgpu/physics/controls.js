@@ -2,12 +2,12 @@ export default class Controls {
 
   constructor(engine) {
     this.engine = engine;
-    this.debug = false;
     this.running = engine.running();
   }
 
   update() {
     
+    this.debugButton.textContent = `debug: ${this.engine._debug}`;
     this.ips.textContent = `speed: ${this.engine._speed}`;
     this.stepCountDiv.textContent = `step: ${this.engine.step}`;
   }
@@ -41,12 +41,10 @@ export default class Controls {
       eng.speed(this.value);
     });
 
-    const debugButton = document.createElement('button');
-    debugButton.textContent = `debug: ${this.debug}`;
-    debugButton.addEventListener("click", () => {
-      this.debug = !this.debug;
-      debugButton.textContent = `debug: ${this.debug}`;
-      this.engine.debug(this.debug)
+    this.debugButton = document.createElement('button');
+    this.debugButton.textContent = `debug: ${this.engine._debug}`;
+    this.debugButton.addEventListener("click", () => {
+      this.engine.debug(!this.engine._debug)
     });
 
     const startStopButton = document.createElement('button');
@@ -91,7 +89,7 @@ export default class Controls {
     container.appendChild(this.stepCountDiv);
     container.appendChild(this.ips);
     container.appendChild(slider);
-    container.appendChild(debugButton);
+    container.appendChild(this.debugButton);
     container.appendChild(startStopButton);
     container.appendChild(stepButton);
     container.appendChild(stepToContainer);

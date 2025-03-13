@@ -30,22 +30,23 @@ export default class Engine {
 
     // const gravity = [0, 0];
     const gravity = [0, -10 * physicsScale]
-    const globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond).buffer;
+    this.globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond)
+    const globalsGpuBuffer = this.globalsBuffer.buffer;
 
     this.particleBuffer = new ParticleBuffer(device, particleCount, range, min, max, physicsScale);
     const particleGpuBuffer = this.particleBuffer.gpuBuffer();
     const colorBuffer = this.particleBuffer._gpuColorBuffer;
 
-    this.gravityPass = new UpdateGravityClipPass(device, globalsBuffer, this.particleBuffer, workgroupCount);
-    this.renderPass = new RenderPass(device, textureFormat, globalsBuffer, particleGpuBuffer, colorBuffer, particleCount);
+    this.gravityPass = new UpdateGravityClipPass(device, globalsGpuBuffer, this.particleBuffer, workgroupCount);
+    this.renderPass = new RenderPass(device, textureFormat, globalsGpuBuffer, particleGpuBuffer, colorBuffer, particleCount);
 
-    this.gridSortPass = new GridSortPass(device, globalsBuffer, particleGpuBuffer, workgroupCount, size, particlesPerCell)
+    this.gridSortPass = new GridSortPass(device, globalsGpuBuffer, particleGpuBuffer, workgroupCount, size, particlesPerCell)
 
     const gridBuffer = this.gridSortPass.gridBuffer;
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
-    this.collisionPass = new CollisionPass(device, globalsBuffer, particleGpuBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
+    this.collisionPass = new CollisionPass(device, globalsGpuBuffer, particleGpuBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
 
-    this.displacementPass = new DisplacementClipPass(device, globalsBuffer, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
+    this.displacementPass = new DisplacementClipPass(device, globalsGpuBuffer, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
   }
 
   running(){
@@ -68,10 +69,8 @@ export default class Engine {
   }
 
   start() {
+    this.debug(false)
     this.physicsInterval = setInterval(this.physicsLoop, (1000 / (this.stepsPerSecond * (this._speed / 100))));
-
-    // single step for debugging
-    // this.physicsLoop()
   }
 
   stop() {
@@ -121,6 +120,7 @@ export default class Engine {
 
     if (this._debug) {
       console.log(`\nStep: ${this.step}`)
+      this.globalsBuffer.debugLog();
       // Debug logging, we have to log after finishing the command encoder. 
       // This will make sure the debug buffers are read after the physics logic is applied and the debug buffers are filled.
       await this.gravityPass.debugLog();
