@@ -16,18 +16,17 @@ const shader = /*wgsl*/`
 
   struct Displacement {
     x: atomic<i32>,
-    y: atomic<i32>
+    y: atomic<i32>,
   }
 
   struct Collision {
     hit: bool,
     diff: vec2i,
-    dot: i32, // the dot product of vector diff, which is the squared length. x*x + y*y
   }
 
   struct Neighbours {
     count: u32,
-    neighbour: array<u32, 270> //270 = 30*9, max amount of neighbours possible in the cells
+    neighbour: array<u32, 270>, //270 = 30*9, max amount of neighbours possible in the cells
   }
 
   struct GlobalVars {
@@ -50,7 +49,7 @@ const shader = /*wgsl*/`
   // with each cell taking (x + y) * 30 bytes.
   // pos is expected to be a position on the grid [0,SIZE]
   fn arrayIndexOffset(array_index: u32) -> u32 {
-    return array_index * MAX_PARTICLES_PER_CELL; //
+    return array_index * MAX_PARTICLES_PER_CELL; 
   }
 
   fn arrayIndex(grid_pos: vec2i) -> u32 {
@@ -98,24 +97,29 @@ const shader = /*wgsl*/`
   }
 
   //returns vector between particles and distance_squared if it collides
-  fn collides(p1: Particle, p2: Particle) -> Collision {
-    let diff = p1.position - p2.position;
-    let dot = dot(diff, diff);
+  fn collides(p1: vec2i, p2: vec2i) -> Collision {
+    let diff = p1 - p2; // can not overflow, as subtraction is always less.
+
+    let diff_shift = diff / 512; // Shifting by 8 to divide by 512, to make sure the int does not overflow (with grid_size 1000)
+    let scale_shift = globals.physics_scale / 512;
+    // let dot = dot(diff_shift, diff_shift); // dot product with itself calculates the square length, this could overflow.
+    let sq = diff_shift.x * diff_shift.x + diff_shift.y * diff_shift.y;
 
     // each particle has a diameter of 1 unit of globals.size. Which is 1 globals.physics_scale.
     // Particle collide if their distance is shorter than 2x the radius. (== diameter)
     // compare squared values to avoid doing sqrt()
-    let hit = dot < globals.physics_scale * globals.physics_scale;
+    let hit = sq < (scale_shift * scale_shift);
 
-    return Collision(hit, diff, dot);
+    return Collision(hit, diff);
   }
 
   // returns the amount of displacement for the particle
   // the other particle has the inverse displacement. Since all particles are equally heavy.
-  fn bounce(diff: vec2i, dot: i32) -> vec2i {
+  fn bounce(diff: vec2i) -> vec2i {
     // since particles are the same size and have the same mass we do not need to take them into account. 
     // and we can just move both particles in the other direction by some amount to, after many iterations, approach their desired distance.
     return (diff * 3) / 8; // == (diff / 2) * 0.75, moving both particles a part of half the distance they need.
+    // This will not overflow, since particles are at most 3 cells apart. This makes 9 the minimum grid size.
   }
 
   @compute @workgroup_size(64)
@@ -131,12 +135,12 @@ const shader = /*wgsl*/`
         if(particle_index >= n_index) {continue;} // skip self and avoid doing double collision calculations.
         let n = particles[n_index];
         
-        var collision = collides(p, n);
+        var collision = collides(p.position, n.position);
         if(!collision.hit) {continue;}
 
         atomicAdd(&collision_count,1);
 
-        var displacement = bounce(collision.diff, collision.dot);
+        var displacement = bounce(collision.diff);
 
         // displace particle
         atomicAdd(&particle_displacement[particle_index].x, displacement.x);

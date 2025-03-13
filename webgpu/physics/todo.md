@@ -42,6 +42,25 @@ When calculating displacement add to storage
 
 on the next pass, apply displacement to each particle.
 
+take extra care with integer overflow. When using squared distance, the values can easily overflow.
+The maximum distance 2 particles can be is when they are diagonally in opposite cells.
+e.g. cell 0 & 8 or 6 & 2. the squared distance will be 3 * 3 + 3 * 3 = 18
+
+[0][1][2]
+[3][4][5]
+[6][7][8]
+
+The units will be multiplied by the physics scale. And the physicsScale in turn is dependant on the size of the grid.
+for a grid size of 1000, the physics scale = 4_000_768
+((12_002_304 * 12_002_304) + (12_002_304 * 12_002_304)) = 2.881106e+14
+Which is too big to fit into a i32, which is 2_147_483_647 (2.1e+9)
+
+So we will have to loose some precision and scale down the values when comparing distances.
+This can be done efficiently using bitwise shifts. Every shift divides by 2.
+
+Shifting 9 times (/512) gives us:
+((23442 * 23442) + (23442 * 23437)) = 1_098_937_518 (8 shifts would still overflow.)
+
 Extra: Take velocity into account when particles collide. So that when we have a collision where the centers have already passed eachother, there is no slingshot, but a correct bounce.
   - use cross product of velocity and diff? if positive or negative should tell us on which side it is. add a whole diameter to diff to compensate.
 
@@ -50,10 +69,9 @@ Extra: Take velocity into account when particles collide. So that when we have a
 - render on a different scale, maybe use a different renderer https://webgpufundamentals.org/webgpu/lessons/webgpu-points.html
 - render circles
 - DONE make engine manually steppable
-- log velocity
-- log physics scale values
-- be able to run until specific frame
-
+- DONE log velocity
+- DONE log physics scale values
+- DONE be able to run until specific frame
 
 ### detect refreshrate of browser instead of assuming 60
 Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.
@@ -62,3 +80,5 @@ Maybe round off to nearest standard. 60/90/120/144 etc
 ### log performance of the gpu
 Not sure how we can do this, but we should be able to detect if the gpu command queue is filling up, or if it is coping
 
+### use observable controls for the engine
+So it is easy for the control visuals to update when state changes in the engine.

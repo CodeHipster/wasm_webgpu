@@ -65,18 +65,22 @@ export default class ParticleBuffer {
     let y = max - physicsScale *2;
 
     // position
-    particleData[0 * 4] = x - physicsScale * 4;
+    particleData[0 * 4] = x - physicsScale /2;
     particleData[0 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
+    // particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
     particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
     particleData[0 * 4 + 3] = y;
     
     // position
-    particleData[1 * 4] = x + physicsScale * 4;
-    particleData[1 * 4 + 1] = y + physicsScale * 0.5;
+    particleData[1 * 4] = x + physicsScale /2;
+    // particleData[1 * 4 + 1] = y + physicsScale * 0.5;
+    particleData[1 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
+    // particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
     particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
-    particleData[1 * 4 + 3] = y + physicsScale * 0.5;
+    // particleData[1 * 4 + 3] = y + physicsScale * 0.5;
+    particleData[1 * 4 + 3] = y;
 
     return particleData;
   }

@@ -14,7 +14,7 @@ export default class Engine {
     this.particleCount = particleCount;
     // scaling to be able to use only i32 instead of floats.
     // This will give a 286_000_000 buffer before they over/underflow
-    const range = 4_000_000_000; // close to max u32
+    const range = 4_000_768_000; // close to max u32 (and divisable by 1024)
     const particlesPerCell = 30;
     // const range = Math.pow(2, 23) // within the float precision scale
     const physicsScale = range / size; // the size of a pixel
@@ -28,8 +28,8 @@ export default class Engine {
 
     const workgroupCount = this.particleCount / 64 + 1
 
-    // const gravity = [0, 0];
-    const gravity = [0, -10 * physicsScale]
+    const gravity = [0, 0];
+    // const gravity = [0, -10 * physicsScale]
     this.globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond)
     const globalsGpuBuffer = this.globalsBuffer.buffer;
 
