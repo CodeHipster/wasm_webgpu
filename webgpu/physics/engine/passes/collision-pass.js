@@ -102,6 +102,7 @@ const shader = /*wgsl*/`
 
     let diff_shift = diff / 512; // Shifting by 8 to divide by 512, to make sure the int does not overflow (with grid_size 1000)
     let scale_shift = globals.physics_scale / 512;
+
     // let dot = dot(diff_shift, diff_shift); // dot product with itself calculates the square length, this could overflow.
     let sq = diff_shift.x * diff_shift.x + diff_shift.y * diff_shift.y;
 
@@ -129,7 +130,7 @@ const shader = /*wgsl*/`
       let particle_index = id.x;
       let p = particles[particle_index];
       let neighbours = getNeighbours(p.position);
-
+      
       for (var i: u32 = 0; i < neighbours.count ; i = i + 1) {
         let n_index = neighbours.neighbour[i]; // get neighbour index
         if(particle_index >= n_index) {continue;} // skip self and avoid doing double collision calculations.
@@ -181,7 +182,7 @@ export default class CollisionPass {
     await this.collisionCountDebugBuffer.mapAsync(GPUMapMode.READ);
     const collisionCount = new Uint32Array(this.collisionCountDebugBuffer.getMappedRange().slice()); //copy data
     this.collisionCountDebugBuffer.unmap(); // give control back to gpu
-    console.log(`collisions: ${collisionCount[0]}`);
+    console.log(`collisions: ${collisionCount[0]}, ${collisionCount[1]}`);
 
     await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
     const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data

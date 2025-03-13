@@ -61,7 +61,7 @@ export default class ParticleBuffer {
 
   _particleCollision(particleCount, min, max, physicsScale){
     let particleData = new Int32Array(particleCount * 4);
-    let x = physicsScale / 2
+    let x = 0
     let y = max - physicsScale *2;
 
     // position
