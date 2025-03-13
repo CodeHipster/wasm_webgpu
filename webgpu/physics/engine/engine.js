@@ -28,8 +28,8 @@ export default class Engine {
 
     const workgroupCount = this.particleCount / 64 + 1
 
-    const gravity = [0, 0];
-    // const gravity = [0, -10 * physicsScale]
+    // const gravity = [0, 0];
+    const gravity = [0, -10 * physicsScale]
     this.globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond)
     const globalsGpuBuffer = this.globalsBuffer.buffer;
 

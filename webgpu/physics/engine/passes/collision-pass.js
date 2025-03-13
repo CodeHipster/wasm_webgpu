@@ -85,8 +85,9 @@ const shader = /*wgsl*/`
           
         // fetch count of neighbours
         for (var c: u32 = 0; c < n_count; c = c + 1) {
+          
           let n_index = grid[grid_index + c];
-          neighbour[n_count] = n_index;
+          neighbour[count] = n_index;
           count = count + 1;
         }
       }
@@ -182,7 +183,7 @@ export default class CollisionPass {
     await this.collisionCountDebugBuffer.mapAsync(GPUMapMode.READ);
     const collisionCount = new Uint32Array(this.collisionCountDebugBuffer.getMappedRange().slice()); //copy data
     this.collisionCountDebugBuffer.unmap(); // give control back to gpu
-    console.log(`collisions: ${collisionCount[0]}, ${collisionCount[1]}`);
+    console.log(`collisions: ${collisionCount[0]}`);
 
     await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
     const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
