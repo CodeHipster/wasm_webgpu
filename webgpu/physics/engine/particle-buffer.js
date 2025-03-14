@@ -6,15 +6,15 @@ export default class ParticleBuffer {
     this._gpuColorBuffer = this._colorBuffer(device, particleCount)
   }
 
-  gpuBuffer(){
+  gpuBuffer() {
     return this._gpuBuffer;
   }
 
-  buildDebugBuffer(pass){
+  buildDebugBuffer(pass) {
     return new ParticleDebugBuffer(this.device, this._gpuBuffer.size, this.physicsScale, pass);
   }
 
-  _colorBuffer(device, particleCount){
+  _colorBuffer(device, particleCount) {
     // Create particle color buffer
     const bufferSize = particleCount * 4 * 4; // 4 floats for each color (float is 4 bytes)
     const particleBuffer = device.createBuffer({
@@ -29,14 +29,14 @@ export default class ParticleBuffer {
 
     // rgba format
     colors[0] = 1.0; // particle 1 is red
-    colors[1] = 0.0; 
-    colors[2] = 0.0; 
-    colors[3] = 1.0; 
-    colors[4] = 0.0; 
+    colors[1] = 0.0;
+    colors[2] = 0.0;
+    colors[3] = 1.0;
+    colors[4] = 0.0;
     colors[5] = 1.0; // particle 2 is green
-    colors[6] = 0.0; 
-    colors[7] = 1.0; 
-    
+    colors[6] = 0.0;
+    colors[7] = 1.0;
+
     device.queue.writeBuffer(particleBuffer, 0, colors);
 
     return particleBuffer;
@@ -52,50 +52,50 @@ export default class ParticleBuffer {
     });
 
     // Initialize particle positions
-    let particleData = this._randomParticles(particleCount, range, max);
-    // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
+    // let particleData = this._randomParticles(particleCount, range, max);
+    let particleData = this._particleCollision(particleCount, min, max, physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
   }
 
-  _particleCollision(particleCount, min, max, physicsScale){
+  _particleCollision(particleCount, min, max, physicsScale) {
     let particleData = new Int32Array(particleCount * 4);
     let x = 0
-    let y = max - physicsScale *2;
+    let y = max - physicsScale * 2;
 
     // position
-    particleData[0 * 4] = x - physicsScale /2;
+    particleData[0 * 4] = x - physicsScale;
     particleData[0 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
     // particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
-    particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
+    particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256;
     particleData[0 * 4 + 3] = y;
-    
+
     // position
-    particleData[1 * 4] = x + physicsScale /2;
+    particleData[1 * 4] = x + physicsScale;
     // particleData[1 * 4 + 1] = y + physicsScale * 0.5;
     particleData[1 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
     // particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
-    particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
+    particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256;
     // particleData[1 * 4 + 3] = y + physicsScale * 0.5;
     particleData[1 * 4 + 3] = y;
 
     return particleData;
   }
-  
-  _stackedParticles(particleCount, min, max, physicsScale){
+
+  _stackedParticles(particleCount, min, max, physicsScale) {
     let particleData = new Int32Array(particleCount * 4);
     let x = min + physicsScale;
     let y = max - physicsScale;
-    let step = physicsScale*3;
+    let step = physicsScale * 3;
     for (let i = 0; i < particleCount; i++) {
       // Store as flat data in an array
-      if( x >= max) { x = min - physicsScale; } // roll over to next line
-      if( y <= min) { y = max - physicsScale; x += step;}
+      if (x >= max) { x = min - physicsScale; } // roll over to next line
+      if (y <= min) { y = max - physicsScale; x += step; }
       // position
-      particleData[i * 4] = x ;
+      particleData[i * 4] = x;
       particleData[i * 4 + 1] = y;
       // previousPosition, start at the same location, which means there is no initial velocity.
       particleData[i * 4 + 2] = x;
@@ -105,17 +105,17 @@ export default class ParticleBuffer {
     return particleData;
   }
 
-  _alignedParticles(particleCount, min, max, physicsScale){
+  _alignedParticles(particleCount, min, max, physicsScale) {
     let particleData = new Int32Array(particleCount * 4);
     let x = min + physicsScale;
     let y = max - physicsScale;
-    let step = physicsScale/2;
+    let step = physicsScale / 2;
     for (let i = 0; i < particleCount; i++) {
       // Store as flat data in an array
-      if( x >= max) { x = min - physicsScale; y -= step;} // roll over to next line
-      if( y <= min) { y = max - physicsScale}
+      if (x >= max) { x = min - physicsScale; y -= step; } // roll over to next line
+      if (y <= min) { y = max - physicsScale }
       // position
-      particleData[i * 4] = x ;
+      particleData[i * 4] = x;
       particleData[i * 4 + 1] = y;
       // previousPosition, start at the same location, which means there is no initial velocity.
       particleData[i * 4 + 2] = x;
@@ -144,13 +144,13 @@ export default class ParticleBuffer {
   }
 }
 
-class ParticleDebugBuffer{
-  constructor(device, size, physicsScale, pass){
+class ParticleDebugBuffer {
+  constructor(device, size, physicsScale, pass) {
     this.physicsScale = physicsScale;
     this._gpuBuffer = this._createGpuBuffer(device, size, pass);
   }
 
-  gpuBuffer(){
+  gpuBuffer() {
     return this._gpuBuffer;
   }
 
@@ -170,13 +170,14 @@ class ParticleDebugBuffer{
     this._gpuBuffer.unmap(); // give control back to gpu
     for (let i = 0; i < debugParticle.length; i = i + 4) {
       const x = debugParticle[i];
-      const y = debugParticle[i+1];
-      const px = debugParticle[i+2]; //previous x
-      const py = debugParticle[i+3]; //previous y
-      console.log(`particle: ${i/4} 
-\tgrid      x: ${(x / this.physicsScale).toString().padStart(10,' ')}, \ty:${(y / this.physicsScale).toString().padStart(10,' ')}
-\tphysics   x: ${x.toString().padStart(10,' ')}, \ty:${y.toString().padStart(10,' ')}
-\tphys step x: ${(x-px).toString().padStart(10,' ')}, \ty:${(y-py).toString().padStart(10,' ')}`);
+      const y = debugParticle[i + 1];
+      const px = debugParticle[i + 2]; //previous x
+      const py = debugParticle[i + 3]; //previous y
+      console.log(`particle: ${i / 4} 
+\tgrid      x: ${(x / this.physicsScale).toString().padStart(10, ' ')}, \ty:${(y / this.physicsScale).toString().padStart(10, ' ')}
+\tphysics   x: ${x.toString().padStart(10, ' ')}, \ty:${y.toString().padStart(10, ' ')}
+\tdiff      x: ${((x - px) / this.physicsScale).toString().padStart(10, ' ')}, \ty:${((y - py) / this.physicsScale).toString().padStart(10, ' ')}
+\tdiff phys x: ${(x - px).toString().padStart(10, ' ')}, \ty:${(y - py).toString().padStart(10, ' ')}`);
     }
   }
 }

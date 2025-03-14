@@ -32,7 +32,7 @@ const shader = /* wgsl */`
 
     let position = particles[i].position + displacement;
     // Apply boundary constraints (keep particles inside a the box)
-    particles[i].position = clamp(position, vec2<i32>(globals.min), vec2<i32>(globals.max));
+    particles[i].position = clamp(position, vec2<i32>(globals.min + globals.physics_scale/2), vec2<i32>(globals.max - globals.physics_scale/2));
   }
 `;
 

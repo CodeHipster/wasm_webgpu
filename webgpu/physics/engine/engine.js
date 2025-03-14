@@ -14,7 +14,7 @@ export default class Engine {
     this.particleCount = particleCount;
     // scaling to be able to use only i32 instead of floats.
     // This will give a 286_000_000 buffer before they over/underflow
-    const range = 4_000_768_000; // close to max u32 (and divisable by 1024)
+    const range = 4026531840; //2^32 - 2^28; // close to max u32 (and divisable by 1024)
     const particlesPerCell = 30;
     // const range = Math.pow(2, 23) // within the float precision scale
     const physicsScale = range / size; // the size of a pixel
