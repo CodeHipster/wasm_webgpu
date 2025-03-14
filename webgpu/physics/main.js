@@ -11,7 +11,7 @@ const SIZE = 1000
 
 // const PARTICLE_COUNT = 8_388_608; // max buffer size
 // const PARTICLE_COUNT = 1024 * 1023 * 4 -1; // max for compute dispatch groups
-const PARTICLE_COUNT = 2
+const PARTICLE_COUNT = 20000
 
 async function main() {
 
