@@ -33,7 +33,7 @@ A separate storage will keep track of the nr of particles in a cell in an atomic
 Storage requirements for the grid are 1_000_000 * 30 * 4 = 120_000_000 bytes. The max storage = 128Mib = 134_217_728 bytes
 So this should fit as an upper limit. We will have to check what the performance says about this in regards of memory misses.
 
-### collision detection
+### collision detection - DONE
 
 check for collision with the 9 cells around. using the previously constructed grid.
 
@@ -82,3 +82,29 @@ Not sure how we can do this, but we should be able to detect if the gpu command 
 
 ### use observable controls for the engine
 So it is easy for the control visuals to update when state changes in the engine.
+
+### have the boundry pushback before clipping
+
+### have correct physics even if particle moves beyond the halfway point.
+
+### build it completely in floats
+
+### deploy online
+
+### add mobile accelerometer input for gravity
+
+### build it completely in ints
+
+### profile gpu
+
+### add colors to pixels based on velocity
+
+### make engine controllable
+- size
+- pixels
+- stiffness
+- ips
+- fps
+- pixel faucet on click/touch
+
+

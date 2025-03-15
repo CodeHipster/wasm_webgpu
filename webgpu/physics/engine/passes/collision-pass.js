@@ -144,8 +144,9 @@ const shader = /*wgsl*/`
     let distance = sqrt(sq_diff);
     let ratio = 1 - distance/scale_f;
     let overlap_f = diff_f * ratio;
-    let overlap = vec2i(overlap_f);
-    return (overlap * 3) / 8; // == (diff / 2) * 0.75, moving both particles a part of half the distance they need.
+    let scaled_overlap = (overlap_f / 2) * 0.80;
+    return vec2i(scaled_overlap);
+    // return (overlap * 3) / 8; // == (diff / 2) * 0.75, moving both particles a part of half the distance they need.
     // This will not overflow, since particles are at most 3 cells apart. This makes 9 the minimum grid size.
   }
 
