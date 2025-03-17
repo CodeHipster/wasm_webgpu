@@ -33,6 +33,24 @@ const shader = /* wgsl */`
     let position = particles[i].position + displacement;
     // Apply boundary constraints (keep particles inside a the box)
     particles[i].position = clamp(position, vec2<i32>(globals.min + globals.physics_scale/2), vec2<i32>(globals.max - globals.physics_scale/2));
+    particles[i].position = bounce_border(particles[i]);
+  }
+
+  // push back a little when exactly on the border, to avoid stacking
+  fn bounce_border(particle: Particle) -> vec2i {
+    var pos = particle.position;
+    if(pos.x == (globals.max - globals.physics_scale/2)){ 
+      pos.x = pos.x - (globals.physics_scale / 128);
+    } else if(pos.x == (globals.min + globals.physics_scale/2)){ 
+      pos.x = pos.x + (globals.physics_scale / 128);
+    }
+  
+    if(pos.y == (globals.max - globals.physics_scale/2)){ 
+      pos.y = pos.y - (globals.physics_scale / 128);
+    } else if(pos.y == (globals.min + globals.physics_scale/2)){ 
+      pos.y = pos.y + (globals.physics_scale / 128);
+    }
+    return pos;
   }
 `;
 
@@ -54,8 +72,8 @@ export default class DisplacementPass {
     pass.setBindGroup(0, this.bindGroup);
     pass.dispatchWorkgroups(this.workgroupCount);
     pass.end();
-    
-    if(this.debug){
+
+    if (this.debug) {
       commandEncoder.copyBufferToBuffer(this.particleBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer(), 0, this.particleDebugBuffer.gpuBuffer().size);
     }
   }
