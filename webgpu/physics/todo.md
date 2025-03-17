@@ -64,7 +64,7 @@ Shifting 9 times (/512) gives us:
 Extra: Take velocity into account when particles collide. So that when we have a collision where the centers have already passed eachother, there is no slingshot, but a correct bounce.
   - use cross product of velocity and diff? if positive or negative should tell us on which side it is. add a whole diameter to diff to compensate.
 
-#### debugging collision detection
+#### debugging collision detection - DONE
 - DONE - add color to particles
 - render on a different scale, maybe use a different renderer https://webgpufundamentals.org/webgpu/lessons/webgpu-points.html
 - render circles
@@ -83,7 +83,7 @@ Not sure how we can do this, but we should be able to detect if the gpu command 
 ### use observable controls for the engine
 So it is easy for the control visuals to update when state changes in the engine.
 
-### have the boundry pushback before clipping
+### have the boundry pushback before clipping - DONE
 
 ### have correct physics even if particle moves beyond the halfway point.
 
