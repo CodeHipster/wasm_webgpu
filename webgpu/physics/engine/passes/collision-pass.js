@@ -21,8 +21,7 @@ const shader = /*wgsl*/`
 
   struct Collision {
     hit: bool,
-    diff: vec2f,
-    sq_diff: f32,
+    displacement: vec2i
   }
 
   struct Neighbours {
@@ -118,36 +117,39 @@ const shader = /*wgsl*/`
   // }
 
   //returns vector between particles and distance_squared if it collides
-  fn collides(p1: vec2i, p2: vec2i) -> Collision {
-    let diff = p1 - p2; // can not overflow, as subtraction is always less.
+  fn collides(p1: Particle, p2: Particle) -> Collision {
+    let diff = p1.position - p2.position;
 
     let diff_f = vec2f(diff);
-    // let dot = dot(diff_shift, diff_shift); // dot product with itself calculates the square length, this could overflow.
-    let sq = dot(diff_f, diff_f);
+    let sq_diff = dot(diff_f, diff_f);
 
     // each particle has a diameter of 1 unit of globals.size. Which is 1 globals.physics_scale.
     // Particle collide if their distance is shorter than 2x the radius. (== diameter)
     // compare squared values to avoid doing sqrt()
     let scale_f = f32(globals.physics_scale);
-    let hit = sq < (scale_f * scale_f);
+    let hit = sq_diff < (scale_f * scale_f);
 
-    return Collision(hit, diff_f, sq);
-  }
-
-  // returns the amount of displacement for the particle
-  // the other particle has the inverse displacement. Since all particles are equally heavy.
-  fn bounce(diff_f: vec2f, sq_diff: f32) -> vec2i {
-    // since particles are the same size and have the same mass we do not need to take them into account. 
-    // and we can just move both particles in the other direction by some amount to, after many iterations, approach their desired distance.
+    if(!hit){return Collision(hit, vec2i(0,0));}
     
-    let scale_f = f32(globals.physics_scale);
+    let diameter = f32(globals.physics_scale);
     let distance = sqrt(sq_diff);
-    let ratio = 1 - distance/scale_f;
-    let overlap_f = diff_f * ratio;
-    let scaled_overlap = (overlap_f / 2) * 0.80;
-    return vec2i(scaled_overlap);
-    // return (overlap * 3) / 8; // == (diff / 2) * 0.75, moving both particles a part of half the distance they need.
-    // This will not overflow, since particles are at most 3 cells apart. This makes 9 the minimum grid size.
+
+    let diff_f_prev = vec2f(p1.prev_position - p2.prev_position);
+    let dot_c_p = dot(diff_f, diff_f_prev); // using the relative direction of previous position, we can determine if the particles passed eachothers center.
+
+    if(dot_c_p < 0){
+      // moved past center, overlap = distance + diameter
+      let ratio = diameter/distance;
+      let overlap_f = diff_f * ratio + diff_f;
+      let scaled_overlap = (overlap_f / -2) * 0.80; // -2 because the force is in the other direction.
+      return Collision(hit,vec2i(scaled_overlap));
+    }else{
+      // normal bounce, overlap = 1-distance
+      let ratio = distance/diameter;
+      let overlap_f = diff_f * (1-ratio);
+      let scaled_overlap = (overlap_f / 2) * 0.80;
+      return Collision(hit,vec2i(scaled_overlap));
+    }
   }
 
   @compute @workgroup_size(64)
@@ -163,12 +165,12 @@ const shader = /*wgsl*/`
         if(particle_index >= n_index) {continue;} // skip self and avoid doing double collision calculations.
         let n = particles[n_index];
         
-        var collision = collides(p.position, n.position);
+        var collision = collides(p, n);
         if(!collision.hit) {continue;}
 
         atomicAdd(&collision_count,1);
 
-        var displacement = bounce(collision.diff, collision.sq_diff);
+        var displacement = collision.displacement;
 
         // displace particle
         atomicAdd(&particle_displacement[particle_index].x, displacement.x);
