@@ -3,7 +3,7 @@
 ## bugs
 size < 20 makes the particles fall up?
 
-## GoaL
+## Goal
 verlet integration between particles and the bounding box
 
 ## Steps
@@ -73,31 +73,14 @@ Extra: Take velocity into account when particles collide. So that when we have a
 - DONE log physics scale values
 - DONE be able to run until specific frame
 
-### detect refreshrate of browser instead of assuming 60
-Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.
-Maybe round off to nearest standard. 60/90/120/144 etc
+### have the boundry pushback before clipping - DONE
 
-### log performance of the gpu
-Not sure how we can do this, but we should be able to detect if the gpu command queue is filling up, or if it is coping
+### have correct physics even if particle moves beyond the halfway point. - DONE
+
+### add colors to pixels based on velocity
 
 ### use observable controls for the engine
 So it is easy for the control visuals to update when state changes in the engine.
-
-### have the boundry pushback before clipping - DONE
-
-### have correct physics even if particle moves beyond the halfway point.
-
-### build it completely in floats
-
-### deploy online
-
-### add mobile accelerometer input for gravity
-
-### build it completely in ints
-
-### profile gpu
-
-### add colors to pixels based on velocity
 
 ### make engine controllable
 - size
@@ -106,5 +89,24 @@ So it is easy for the control visuals to update when state changes in the engine
 - ips
 - fps
 - pixel faucet on click/touch
+
+### deploy online
+
+### add mobile accelerometer input for gravity
+
+### detect refreshrate of browser instead of assuming 60
+Sadly we can't get the refreshrate from the browser. So we will have to run a second refresh cycle to get the value.
+Maybe round off to nearest standard. 60/90/120/144 etc
+
+### log performance of the gpu
+Not sure how we can do this, but we should be able to detect if the gpu command queue is filling up, or if it is coping
+
+### build it completely in floats
+
+### build it completely in ints
+
+### profile gpu
+
+
 
 
