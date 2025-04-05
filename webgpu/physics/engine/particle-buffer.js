@@ -54,9 +54,24 @@ export default class ParticleBuffer {
     // Initialize particle positions
     let particleData = this._randomParticles(particleCount, range, max);
     // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
+    // let particleData = this._singleParticle(physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
+  }
+
+  _singleParticle(physicsScale){
+    let particleData = new Int32Array(1 * 4);
+    let x = 0
+    let y = 511.9 * physicsScale;
+
+    // position
+    particleData[0 * 4] = x;
+    particleData[0 * 4 + 1] = y;
+    particleData[0 * 4 + 2] = x;
+    particleData[0 * 4 + 3] = y;
+
+    return particleData;
   }
 
   _particleCollision(particleCount, min, max, physicsScale) {
@@ -130,7 +145,6 @@ export default class ParticleBuffer {
     for (let i = 0; i < particleCount; i++) {
       var x = Math.random() * range - max; // x in [min, max]
       var y = Math.random() * range - max; // y in [min, max]
-
 
       // Store as flat data in an array
       // position

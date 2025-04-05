@@ -20,8 +20,8 @@ export default class Engine {
     const physicsScale = range / size; // the size of a pixel
     this.physicsScale = physicsScale;
     const renderScale = range / 2; // to scale position back into clip space (-1,1)
-    const min = range / -2;
-    const max = range / 2;
+    const min = (range / -2 ) + physicsScale; // To avoid a line of pixels being rendered out side of the screen
+    const max = range / 2; 
     this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
     this._speed = 100; // speed on which the simulation runs
     this.step = 0;
