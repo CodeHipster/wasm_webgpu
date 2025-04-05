@@ -52,7 +52,7 @@ export default class ParticleBuffer {
     });
 
     // Initialize particle positions
-    let particleData = this._randomParticles(particleCount, range, max);
+    let particleData = this._randomParticles(particleCount, range-physicsScale, max - physicsScale);
     // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
     // let particleData = this._singleParticle(physicsScale);
     device.queue.writeBuffer(particleBuffer, 0, particleData);

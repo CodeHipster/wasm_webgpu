@@ -29,8 +29,8 @@ const shader = /*wgsl*/`
       let particle = particles[index];
       let f_velocity = vec2f(particle.position - particle.prev_position);
       let f_dist_sq = dot(f_velocity, f_velocity);
-      let f_gravity_step = vec2f(globals.gravity / globals.sps_2);
-      let f_gravity_sq = dot(f_gravity_step, f_gravity_step)*20;
+      let f_gravity_step = vec2f(globals.gravity/(128));
+      let f_gravity_sq = dot(f_gravity_step, f_gravity_step);
       // fully white when velocity > gravity
       // fully blue when velocity = 0
       let color_scale = min(f_dist_sq / f_gravity_sq, 1);
