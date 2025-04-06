@@ -77,7 +77,11 @@ Extra: Take velocity into account when particles collide. So that when we have a
 
 ### have correct physics even if particle moves beyond the halfway point. - DONE
 
-### add colors to pixels based on velocity
+### add colors to pixels based on velocity - DONE
+
+### deploy online - DONE
+
+### build it completely in floats
 
 ### use observable controls for the engine
 So it is easy for the control visuals to update when state changes in the engine.
@@ -90,8 +94,6 @@ So it is easy for the control visuals to update when state changes in the engine
 - fps
 - pixel faucet on click/touch
 
-### deploy online
-
 ### add mobile accelerometer input for gravity
 
 ### detect refreshrate of browser instead of assuming 60
@@ -101,7 +103,6 @@ Maybe round off to nearest standard. 60/90/120/144 etc
 ### log performance of the gpu
 Not sure how we can do this, but we should be able to detect if the gpu command queue is filling up, or if it is coping
 
-### build it completely in floats
 
 ### build it completely in ints
 
