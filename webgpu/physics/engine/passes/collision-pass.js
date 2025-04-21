@@ -11,17 +11,11 @@ const shader = /*wgsl*/`
   @group(0) @binding(1) var<uniform> globals: GlobalVars;
   @group(0) @binding(2) var<storage, read_write> grid: array<u32>; // Stores particle indices
   @group(0) @binding(3) var<storage, read_write> grid_count: array<atomic<u32>>; // Particle count per cell
-  @group(0) @binding(4) var<storage, read_write> particle_displacement: array<Displacement>; // Particle displacement
   @group(0) @binding(5) var<storage, read_write> collision_count: atomic<u32>; 
-
-  struct Displacement {
-    x: atomic<i32>,
-    y: atomic<i32>,
-  }
 
   struct Collision {
     hit: bool,
-    displacement: vec2i
+    displacement: vec2f
   }
 
   struct Neighbours {
@@ -40,8 +34,8 @@ const shader = /*wgsl*/`
   };
 
   struct Particle {
-    position: vec2<i32>,
-    prev_position: vec2<i32>,
+    position: vec2<f32>,
+    prev_position: vec2<f32>,
   };
 
   // Get byte index of grid[0 -> SIZE] in the array
@@ -56,19 +50,19 @@ const shader = /*wgsl*/`
     return u32(grid_pos.x + (grid_pos.y * globals.size));
   }
 
-  fn positionOnGrid(pos: vec2i) -> vec2i {
+  fn positionOnGrid(pos: vec2f) -> vec2i {
     // To move from signed ints to unsigned ints, 
     let align = globals.size / 2;
     // the width of the grid.
-    let x = (pos.x / globals.physics_scale) + align;
-    let y = (pos.y / globals.physics_scale) + align;
+    let x = i32(pos.x) + align;
+    let y = i32(pos.y) + align;
     return vec2i(x, y);
   }
 
   // return type is max value that we could have
   // position = the position on the grid. [0,SIZE]
   // TODO: optimize with storage buffer?
-  fn getNeighbours(position: vec2i) -> Neighbours {
+  fn getNeighbours(position: vec2f) -> Neighbours {
 
     var grid_position = positionOnGrid(position);
     var neighbour = array<u32,270>();
@@ -85,7 +79,6 @@ const shader = /*wgsl*/`
           
         // fetch count of neighbours
         for (var c: u32 = 0; c < n_count; c = c + 1) {
-          
           let n_index = grid[grid_index + c];
           neighbour[count] = n_index;
           count = count + 1;
@@ -97,59 +90,27 @@ const shader = /*wgsl*/`
     return Neighbours(count,neighbour);
   }
 
-  // TODO: implement using integer values only.
-  // //returns vector between particles and distance_squared if it collides
-  // fn collides(p1: vec2i, p2: vec2i) -> Collision {
-  //   let diff = p1 - p2; // can not overflow, as subtraction is always less.
-
-  //   let diff_shift = diff / 2048; // dividing by a 2^x for optimization, to make sure the int does not overflow (with grid_size)
-  //   let scale_shift = globals.physics_scale / 2048;
-
-  //   // let dot = dot(diff_shift, diff_shift); // dot product with itself calculates the square length, this could overflow.
-  //   let sq = diff_shift.x * diff_shift.x + diff_shift.y * diff_shift.y;
-
-  //   // each particle has a diameter of 1 unit of globals.size. Which is 1 globals.physics_scale.
-  //   // Particle collide if their distance is shorter than 2x the radius. (== diameter)
-  //   // compare squared values to avoid doing sqrt()
-  //   let hit = sq < (scale_shift * scale_shift);
-
-  //   return Collision(hit, diff, sq_diff);
-  // }
-
   //returns vector between particles and distance_squared if it collides
   fn collides(p1: Particle, p2: Particle) -> Collision {
     let diff = p1.position - p2.position;
 
-    let diff_f = vec2f(diff);
-    let sq_diff = dot(diff_f, diff_f);
+    let sq_diff = dot(diff, diff);
 
-    // each particle has a diameter of 1 unit of globals.size. Which is 1 globals.physics_scale.
-    // Particle collide if their distance is shorter than 2x the radius. (== diameter)
+    // each particle has a diameter of 1 (unit of globals.size).
+    // Particles collide if their distance is shorter than the diameter==1
     // compare squared values to avoid doing sqrt()
-    let scale_f = f32(globals.physics_scale);
-    let hit = sq_diff < (scale_f * scale_f);
+    let hit = sq_diff < 1;
 
-    if(!hit){return Collision(hit, vec2i(0,0));}
+    if(!hit){return Collision(hit, vec2f(0,0));}
     
-    let diameter = f32(globals.physics_scale);
     let distance = sqrt(sq_diff);
 
-    let diff_f_prev = vec2f(p1.prev_position - p2.prev_position);
-    let dot_c_p = dot(diff_f, diff_f_prev); // using the relative direction of previous position, we can determine if the particles passed eachothers center.
-
-    if(dot_c_p < 0){
-      // moved past center, overlap = distance + diameter
-      let ratio = diameter/distance;
-      let overlap_f = diff_f * ratio + diff_f;
-      let scaled_overlap = (overlap_f / -2) * 0.80; // -2 because the force is in the other direction.
-      return Collision(hit,vec2i(scaled_overlap));
-    }else{
-      // normal bounce, overlap = 1-distance
-      let ratio = distance/diameter;
-      let overlap_f = diff_f * (1-ratio);
-      let scaled_overlap = (overlap_f / 2) * 0.80;
-      return Collision(hit,vec2i(scaled_overlap));
-    }
+    // This does not take the case into account where particles could move past eachothers center.
+    // When this happens particles will be pushed away from eachother in a direction aligning with their current velocity.
+    // Thus accelerating instead of slowing down.
+    let overlap = diff * (1-distance); // e.g. (vector * (1.0-0.9)), effectively scaling the vector.
+    let scaled_overlap = (overlap / 2) * 0.80; // reduce the actual displacement to 80% to introduce dampening into the system.
+    return Collision(hit,vec2f(scaled_overlap));
   }
 
   @compute @workgroup_size(64)
@@ -172,12 +133,13 @@ const shader = /*wgsl*/`
 
         var displacement = collision.displacement;
 
+        // This could cause race conditions!!!
         // displace particle
-        atomicAdd(&particle_displacement[particle_index].x, displacement.x);
-        atomicAdd(&particle_displacement[particle_index].y, displacement.y);
+        &particles[particle_index].x += displacement.x;
+        &particles[particle_index].y += displacement.y;
         // displace neighbour
-        atomicAdd(&particle_displacement[n_index].x, -displacement.x);
-        atomicAdd(&particle_displacement[n_index].y, -displacement.y);
+        &particles[n_index].x += -displacement.x;
+        &particles[n_index].y += -displacement.y;
       }
   }
 `

@@ -82,6 +82,13 @@ Extra: Take velocity into account when particles collide. So that when we have a
 ### deploy online - DONE
 
 ### build it completely in floats
+- change buffers to floats, except particle displacement which is used in collision detection.
+  - will have to determine how to scale to loose the least precision. 
+- change calculations to floats
+- do collision detection with a grid of 3x3 and do 9 collision passes.
+  - investigate potential overhead of having 9 passes compared to 1.
+
+
 
 ### use observable controls for the engine
 So it is easy for the control visuals to update when state changes in the engine.
