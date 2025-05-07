@@ -27,15 +27,14 @@ const shader = /*wgsl*/`
     gravity: vec2i, // (x,y) acceleration
     min: i32,
     max: i32,
-    physics_scale: i32, // for scaling down to grid size
     rander_scale: i32, // for scaling down to clip_space
     sps_2: i32, // steps per second squared
     size: i32, // size of the simulation, x=y (it is a square)
   };
 
   struct Particle {
-    position: vec2<f32>,
-    prev_position: vec2<f32>,
+    position: vec2f,
+    prev_position: vec2f,
   };
 
   // Get byte index of grid[0 -> SIZE] in the array
@@ -135,11 +134,11 @@ const shader = /*wgsl*/`
 
         // This could cause race conditions!!!
         // displace particle
-        &particles[particle_index].x += displacement.x;
-        &particles[particle_index].y += displacement.y;
+        let ppos = p.position + displacement;
+        particles[particle_index].position = ppos;
         // displace neighbour
-        &particles[n_index].x += -displacement.x;
-        &particles[n_index].y += -displacement.y;
+        let npos = n.position - displacement;
+        particles[n_index].position = npos;
       }
   }
 `
@@ -148,12 +147,10 @@ export default class CollisionPass {
 
   constructor(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount) {
     this.pipeline = this._pipeline(device);
-    this.displacementBuffer = this._displacementBuffer(device, particleCount);
-    this.displacementDebugBuffer = this._displacementDebugBuffer(device, this.displacementBuffer)
     this.collisionCountBuffer = this._collisionCountBuffer(device);
     this.collisionCountDebugBuffer = this._collisionCountDebugBuffer(device)
 
-    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.displacementBuffer, this.collisionCountBuffer, this.pipeline);
+    this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, this.collisionCountBuffer, this.pipeline);
     this.workgroupCount = workgroupCount;
   }
 
@@ -174,22 +171,11 @@ export default class CollisionPass {
     const collisionCount = new Uint32Array(this.collisionCountDebugBuffer.getMappedRange().slice()); //copy data
     this.collisionCountDebugBuffer.unmap(); // give control back to gpu
     console.log(`collisions: ${collisionCount[0]}`);
-
-    await this.displacementDebugBuffer.mapAsync(GPUMapMode.READ);
-    const debugDisplacement = new Int32Array(this.displacementDebugBuffer.getMappedRange().slice()); //copy data
-    this.displacementDebugBuffer.unmap(); // give control back to gpu
-    for (let i = 0; i < debugDisplacement.length; i = i + 2) {
-      const x = debugDisplacement[i];
-      const y = debugDisplacement[i + 1];
-      console.log(`particle: ${i / 2} 
-\tgrid    x: ${(x / this.physicsScale).toString().padStart(10,' ')}, y: ${(y / this.physicsScale).toString().padStart(10,' ')}
-\tphysics x: ${x.toString().padStart(10,' ')}, y: ${y.toString().padStart(10,' ')}`)
-    }
   }
 
   pass(commandEncoder) {
     // wipe buffers to remove data from previous pass
-    commandEncoder.clearBuffer(this.displacementBuffer);
+    commandEncoder.clearBuffer(this.collisionCountBuffer);
 
     const pass = commandEncoder.beginComputePass();
     pass.setPipeline(this.pipeline);
@@ -199,7 +185,6 @@ export default class CollisionPass {
 
     if (this._debug) {
       // Encode a command to copy the results to a mappable buffer.
-      commandEncoder.copyBufferToBuffer(this.displacementBuffer, 0, this.displacementDebugBuffer, 0, this.displacementDebugBuffer.size);
       commandEncoder.copyBufferToBuffer(this.collisionCountBuffer, 0, this.collisionCountDebugBuffer, 0, this.collisionCountDebugBuffer.size);
     }
   }
@@ -216,7 +201,7 @@ export default class CollisionPass {
     });
   }
 
-  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, displacementBuffer, collisionCountBuffer, pipeline) {
+  _bindGroup(device, globalsBuffer, particleBuffer, gridBuffer, gridCountBuffer, collisionCountBuffer, pipeline) {
     return device.createBindGroup({
       label: 'collision-bindgroup',
       layout: pipeline.getBindGroupLayout(0),
@@ -225,28 +210,8 @@ export default class CollisionPass {
         { binding: 1, resource: { buffer: globalsBuffer } },
         { binding: 2, resource: { buffer: gridBuffer } },
         { binding: 3, resource: { buffer: gridCountBuffer } },
-        { binding: 4, resource: { buffer: displacementBuffer } },
         { binding: 5, resource: { buffer: collisionCountBuffer } },
       ]
-    });
-  }
-
-  _displacementBuffer(device, particleCount) {
-    return device.createBuffer({
-      label: 'displacement buffer',
-      size: 4 * 2 * particleCount, // x,y per particle
-      // COPY_DST required for clearing buffer
-      // COPY_SRC for copy to debug buffer
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-    });
-  }
-
-  _displacementDebugBuffer(device, buffer) {
-    // create a buffer on the GPU to get a copy of the results
-    return device.createBuffer({
-      label: 'displacement debug buffer',
-      size: buffer.size,
-      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
   }
 

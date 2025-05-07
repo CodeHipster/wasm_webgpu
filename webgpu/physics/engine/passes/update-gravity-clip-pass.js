@@ -3,15 +3,14 @@ const shader = /* wgsl */`
     gravity: vec2i, // (x,y) acceleration
     min: i32,
     max: i32,
-    physics_scale: i32, // for scaling down to grid size
-    rander_scale: i32, // for scaling down to clip_space
+    render_scale: i32, // for scaling down to clip_space
     sps_2: i32, // steps per second squared
     size: i32, // size of the simulation
   };
 
   struct Particle {
-    position: vec2<i32>,
-    prev_position: vec2<i32>,
+    position: vec2f,
+    prev_position: vec2f,
   };
 
   @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -26,11 +25,11 @@ const shader = /* wgsl */`
     
     // Verlet integration step
     let temp = p.position;
-    p.position = p.position + (p.position - p.prev_position) + (globals.gravity / globals.sps_2); // gravity(in seconds) multiplied by time passed^2 in seconds. (or devide by steps per second squared to stay in integers)
+    p.position = p.position + (p.position - p.prev_position) + vec2f(globals.gravity) / f32(globals.sps_2); // gravity(in seconds) multiplied by time passed^2 in seconds. (or divide by steps per second squared to stay in integers)
     p.prev_position = temp;
 
     // Apply boundary constraints (keep particles inside a the box)
-    p.position = clamp(p.position, vec2<i32>(globals.min + globals.physics_scale/2), vec2<i32>(globals.max - globals.physics_scale/2));
+    p.position = clamp(p.position, vec2f(f32(globals.min) + 0.5), vec2f(f32(globals.max) - 0.5)); // keep half a pixel away from border
 
     particles[i] = p;
   }
@@ -46,7 +45,6 @@ export default class GravityPass {
     this.bindGroup = this._bindGroup(device, globalsBuffer, particleBuffer.gpuBuffer(), this.pipeline);
     this.particleBuffer = particleBuffer;
     this.particleDebugBuffer = particleBuffer.buildDebugBuffer("gravity-pass");
-    console.log(this.particleDebugBuffer.gpuBuffer());
     this.workgroupCount = workgroupCount;
   }
 

@@ -1,7 +1,6 @@
 import GlobalsBuffer from "./globals-buffer.js";
 import ParticleBuffer from "./particle-buffer.js";
 import CollisionPass from "./passes/collision-pass.js";
-import DisplacementClipPass from "./passes/displacement-clip-pass.js";
 import UpdateGravityClipPass from "./passes/update-gravity-clip-pass.js";
 import GridSortPass from "./passes/grid-sort-pass.js";
 import RenderPass from "./passes/render-pass.js";
@@ -12,28 +11,25 @@ export default class Engine {
     this.size = size
     this.device = device;
     this.particleCount = particleCount;
-    // scaling to be able to use only i32 instead of floats.
-    // This will give a 286_000_000 buffer before they over/underflow
-    const range = 4026531840; //2^32 - 2^28; // close to max u32 (and divisable by 1024)
+
     const particlesPerCell = 30;
-    // const range = Math.pow(2, 23) // within the float precision scale
-    const physicsScale = range / size; // the size of a pixel
-    this.physicsScale = physicsScale;
-    const renderScale = range / 2; // to scale position back into clip space (-1,1)
-    const min = (range / -2 ) + physicsScale; // To avoid a line of pixels being rendered out side of the screen
-    const max = range / 2; 
+
+    const renderScale = this.size / 2; // to scale position back into clip space (-1,1)
+    // TODO: check if all pixels are rendered
+    const min = this.size / -2; // inclusive
+    const max = this.size / 2; // exclusive
     this.stepsPerSecond = 256 // run the verlet integrator at 256 frames per second
-    this._speed = 100; // speed on which the simulation runs
+    this._speed = 100; // speed in percentage on which the simulation runs
     this.step = 0;
 
     const workgroupCount = this.particleCount / 64 + 1
 
     // const gravity = [0, 0];
-    const gravity = [0, -10 * physicsScale]
-    this.globalsBuffer = new GlobalsBuffer(device, gravity, size, physicsScale, renderScale, min, max, this.stepsPerSecond)
+    const gravity = [0, -10] // in units per second
+    this.globalsBuffer = new GlobalsBuffer(device, gravity, size, renderScale, min, max, this.stepsPerSecond)
     const globalsGpuBuffer = this.globalsBuffer.buffer;
 
-    this.particleBuffer = new ParticleBuffer(device, particleCount, range, min, max, physicsScale);
+    this.particleBuffer = new ParticleBuffer(device, particleCount, this.size, min, max);
     const particleGpuBuffer = this.particleBuffer.gpuBuffer();
     const colorBuffer = this.particleBuffer._gpuColorBuffer;
 
@@ -45,8 +41,6 @@ export default class Engine {
     const gridBuffer = this.gridSortPass.gridBuffer;
     const gridCountBuffer = this.gridSortPass.gridCountBuffer;
     this.collisionPass = new CollisionPass(device, globalsGpuBuffer, particleGpuBuffer, gridBuffer, gridCountBuffer, particleCount, workgroupCount);
-
-    this.displacementPass = new DisplacementClipPass(device, globalsGpuBuffer, this.collisionPass.displacementBuffer, this.particleBuffer, workgroupCount);
   }
 
   running(){
@@ -57,7 +51,7 @@ export default class Engine {
     this._debug = on;
     this.gridSortPass.debug(on)
     this.gravityPass.debug(on)
-    this.collisionPass.debug(on, this.physicsScale)
+    this.collisionPass.debug(on)
   }
 
   speed(percentage) {
@@ -113,9 +107,6 @@ export default class Engine {
     // Collision pass
     this.collisionPass.pass(commandEncoder);
 
-    // Displacement pass
-    this.displacementPass.pass(commandEncoder);
-
     this.device.queue.submit([commandEncoder.finish()]);
 
     if (this._debug) {
@@ -126,7 +117,6 @@ export default class Engine {
       await this.gravityPass.debugLog();
       await this.gridSortPass.debugLog();
       await this.collisionPass.debugLog();
-      await this.displacementPass.debugLog();
     }
   }
 

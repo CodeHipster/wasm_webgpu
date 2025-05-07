@@ -5,15 +5,14 @@ const shader = /*wgsl*/`
     gravity: vec2i, // (x,y) acceleration
     min: i32,
     max: i32,
-    physics_scale: i32, // for scaling down to grid size
     rander_scale: i32, // for scaling down to clip_space
     sps_2: i32, // steps per second squared
     size: i32, // size of the simulation, x=y (it is a square)
   };
 
   struct Particle {
-    position: vec2<i32>,
-    prev_position: vec2<i32>,
+    position: vec2f,
+    prev_position: vec2f,
   };
 
   // Storage Buffers
@@ -23,15 +22,16 @@ const shader = /*wgsl*/`
   @group(0) @binding(3) var<storage, read_write> grid_count: array<atomic<u32>>; // Particle count per cell
 
   // Hash function: Maps a position to a grid index
-  fn gridIndex(pos: vec2<i32>) -> u32 {
-    // To move from signed ints to unsigned ints, 
-    let align = globals.size / 2;
-    // the width of the grid.
+  fn gridIndex(pos: vec2f) -> u32 {
+    // To move from signed ints to unsigned ints, add half the width
+    // TODO: optimize, avoid division
+    // TODO: avoid casting
+    let align = f32(globals.size / 2);
 
-    let x = (pos.x / globals.physics_scale) + align;
-    let y = (pos.y / globals.physics_scale) + align;
+    let x = pos.x + align;
+    let y = pos.y + align;
 
-    return u32(y * globals.size + x);
+    return u32(y * f32(globals.size) + x);
   }
 
   @compute @workgroup_size(64)
@@ -49,6 +49,7 @@ const shader = /*wgsl*/`
         // This will make it a sparse array.
           grid[grid_index * MAX_PARTICLES_PER_CELL + slot] = particle_index;
       }
+      // TODO: debug if we every get above max particles per cell.
   }
 `
 export default class GridSortPass {

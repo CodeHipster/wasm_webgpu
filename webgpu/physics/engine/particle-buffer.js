@@ -1,8 +1,7 @@
 export default class ParticleBuffer {
-  constructor(device, particleCount, range, min, max, physicsScale) {
+  constructor(device, particleCount, range, min, max) {
     this.device = device;
-    this.physicsScale = physicsScale;
-    this._gpuBuffer = this._buffer(device, particleCount, range, min, max, physicsScale);
+    this._gpuBuffer = this._buffer(device, particleCount, range, min, max);
     this._gpuColorBuffer = this._colorBuffer(device, particleCount)
   }
 
@@ -42,7 +41,7 @@ export default class ParticleBuffer {
     return particleBuffer;
   }
 
-  _buffer(device, particleCount, range, min, max, physicsScale) {
+  _buffer(device, particleCount, range, min, max) {
     // Create particle buffer (shared between compute & render)
     const bufferSize = particleCount * 4 * 2 * 2; // 4 ints for x,y, current pos and previous pos
     const particleBuffer = device.createBuffer({
@@ -52,18 +51,18 @@ export default class ParticleBuffer {
     });
 
     // Initialize particle positions
-    let particleData = this._randomParticles(particleCount, range-physicsScale, max - physicsScale);
-    // let particleData = this._particleCollision(particleCount, min, max, physicsScale);
-    // let particleData = this._singleParticle(physicsScale);
+    // let particleData = this._randomParticles(particleCount, range, max);
+    // let particleData = this._particleCollision(particleCount, min, max);
+    let particleData = this._singleParticle();
     device.queue.writeBuffer(particleBuffer, 0, particleData);
 
     return particleBuffer;
   }
 
-  _singleParticle(physicsScale){
-    let particleData = new Int32Array(1 * 4);
+  _singleParticle(){
+    let particleData = new Float32Array(1 * 4);
     let x = 0
-    let y = 511.9 * physicsScale;
+    let y = 0
 
     // position
     particleData[0 * 4] = x;
@@ -74,41 +73,37 @@ export default class ParticleBuffer {
     return particleData;
   }
 
-  _particleCollision(particleCount, min, max, physicsScale) {
-    let particleData = new Int32Array(particleCount * 4);
+  _particleCollision(particleCount, min, max) {
+    let particleData = new Float32Array(particleCount * 4);
     let x = 0
-    let y = max - physicsScale * 2;
+    let y = max-1;
 
     // position
-    particleData[0 * 4] = x - physicsScale;
+    particleData[0 * 4] = x -1;
     particleData[0 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
-    // particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256; 
-    particleData[0 * 4 + 2] = particleData[0 * 4] - (1 * physicsScale) / 256;
+    particleData[0 * 4 + 2] = particleData[0 * 4] - 1 / 256;
     particleData[0 * 4 + 3] = y;
 
     // position
-    particleData[1 * 4] = x + physicsScale;
-    // particleData[1 * 4 + 1] = y + physicsScale * 0.5;
+    particleData[1 * 4] = x + 1;
     particleData[1 * 4 + 1] = y;
     // previousPosition, moving at x unit per second.
-    // particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256; 
-    particleData[1 * 4 + 2] = particleData[1 * 4] + (1 * physicsScale) / 256;
-    // particleData[1 * 4 + 3] = y + physicsScale * 0.5;
+    particleData[1 * 4 + 2] = particleData[1 * 4] + 1 / 256;
     particleData[1 * 4 + 3] = y;
 
     return particleData;
   }
 
-  _stackedParticles(particleCount, min, max, physicsScale) {
-    let particleData = new Int32Array(particleCount * 4);
-    let x = min + physicsScale;
-    let y = max - physicsScale;
-    let step = physicsScale * 3;
+  _stackedParticles(particleCount, min, max) {
+    let particleData = new Float32Array(particleCount * 4);
+    let x = min + 1;
+    let y = max - 1;
+    let step = 1 * 3;
     for (let i = 0; i < particleCount; i++) {
       // Store as flat data in an array
-      if (x >= max) { x = min - physicsScale; } // roll over to next line
-      if (y <= min) { y = max - physicsScale; x += step; }
+      if (x >= max) { x = min - 1; } // roll over to next line
+      if (y <= min) { y = max - 1; x += step; }
       // position
       particleData[i * 4] = x;
       particleData[i * 4 + 1] = y;
@@ -120,15 +115,15 @@ export default class ParticleBuffer {
     return particleData;
   }
 
-  _alignedParticles(particleCount, min, max, physicsScale) {
-    let particleData = new Int32Array(particleCount * 4);
-    let x = min + physicsScale;
-    let y = max - physicsScale;
-    let step = physicsScale / 2;
+  _alignedParticles(particleCount, min, max) {
+    let particleData = new Float32Array(particleCount * 4);
+    let x = min + 1;
+    let y = max - 1;
+    let step = 1 / 2;
     for (let i = 0; i < particleCount; i++) {
       // Store as flat data in an array
-      if (x >= max) { x = min - physicsScale; y -= step; } // roll over to next line
-      if (y <= min) { y = max - physicsScale }
+      if (x >= max) { x = min - 1; y -= step; } // roll over to next line
+      if (y <= min) { y = max - 1 }
       // position
       particleData[i * 4] = x;
       particleData[i * 4 + 1] = y;
@@ -141,10 +136,10 @@ export default class ParticleBuffer {
   }
 
   _randomParticles(particleCount, range, max) {
-    let particleData = new Int32Array(particleCount * 4);
+    let particleData = new Float32Array(particleCount * 4);
     for (let i = 0; i < particleCount; i++) {
-      var x = Math.random() * range - max; // x in [min, max]
-      var y = Math.random() * range - max; // y in [min, max]
+      var x = Math.random() * range - max; // x in [min, max)
+      var y = Math.random() * range - max; // y in [min, max)
 
       // Store as flat data in an array
       // position
@@ -159,8 +154,7 @@ export default class ParticleBuffer {
 }
 
 class ParticleDebugBuffer {
-  constructor(device, size, physicsScale, pass) {
-    this.physicsScale = physicsScale;
+  constructor(device, size, pass) {
     this._gpuBuffer = this._createGpuBuffer(device, size, pass);
   }
 
@@ -180,7 +174,7 @@ class ParticleDebugBuffer {
   async debugLog(pass) {
     console.log(`### logging particles from ${pass} ###`)
     await this._gpuBuffer.mapAsync(GPUMapMode.READ);
-    const debugParticle = new Int32Array(this._gpuBuffer.getMappedRange().slice()); //copy data
+    const debugParticle = new Float32Array(this._gpuBuffer.getMappedRange().slice()); //copy data
     this._gpuBuffer.unmap(); // give control back to gpu
     for (let i = 0; i < debugParticle.length; i = i + 4) {
       const x = debugParticle[i];
@@ -188,10 +182,8 @@ class ParticleDebugBuffer {
       const px = debugParticle[i + 2]; //previous x
       const py = debugParticle[i + 3]; //previous y
       console.log(`particle: ${i / 4} 
-\tgrid      x: ${(x / this.physicsScale).toString().padStart(10, ' ')}, \ty:${(y / this.physicsScale).toString().padStart(10, ' ')}
-\tphysics   x: ${x.toString().padStart(10, ' ')}, \ty:${y.toString().padStart(10, ' ')}
-\tdiff      x: ${((x - px) / this.physicsScale).toString().padStart(10, ' ')}, \ty:${((y - py) / this.physicsScale).toString().padStart(10, ' ')}
-\tdiff phys x: ${(x - px).toString().padStart(10, ' ')}, \ty:${(y - py).toString().padStart(10, ' ')}`);
+\tgrid      x: ${(x).toString().padStart(10, ' ')}, \ty:${(y).toString().padStart(10, ' ')}
+\tdiff      x: ${((x - px)).toString().padStart(10, ' ')}, \ty:${((y - py)).toString().padStart(10, ' ')}`);
     }
   }
 }

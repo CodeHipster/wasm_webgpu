@@ -3,15 +3,14 @@ const shader = /*wgsl*/`
     gravity: vec2i, // (x,y) acceleration
     min: i32,
     max: i32,
-    physics_scale: i32, // for scaling down to grid size
     render_scale: i32, // for scaling down to clip_space
     sps_2: i32, // steps per second squared
     size: i32, // size of the simulation
   };
   
   struct Particle {
-    position: vec2<i32>,
-    prev_position: vec2<i32>,
+    position: vec2f,
+    prev_position: vec2f,
   };
 
   @group(0) @binding(0) var<storage, read> particles: array<Particle>;
@@ -19,21 +18,21 @@ const shader = /*wgsl*/`
   @group(0) @binding(2) var<storage, read> colors: array<vec4f>;
 
   struct VertexOutput {
-      @builtin(position) position: vec4<f32>,
-      @location(0) color: vec4<f32>,
+      @builtin(position) position: vec4f,
+      @location(0) color: vec4f,
   };
 
   @vertex
   fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
       var out: VertexOutput;
       let particle = particles[index];
-      let f_velocity = vec2f(particle.position - particle.prev_position);
-      let f_dist_sq = dot(f_velocity, f_velocity);
-      let f_gravity_step = vec2f(globals.gravity/(128));
-      let f_gravity_sq = dot(f_gravity_step, f_gravity_step);
+      let velocity = particle.position - particle.prev_position;
+      let dist_sq = dot(velocity, velocity);
+      let gravity_step = vec2f(globals.gravity/(128));
+      let gravity_sq = dot(gravity_step, gravity_step);
       // fully white when velocity > gravity
       // fully blue when velocity = 0
-      let color_scale = min(f_dist_sq / f_gravity_sq, 1);
+      let color_scale = min(dist_sq / gravity_sq, 1);
       let white = vec4f(1.0, 1.0, 1.0, 1.0);
       let blue = vec4f(0.0, 0.0, 1.0, 1.0);
       let color = colors[index];
