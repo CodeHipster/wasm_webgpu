@@ -31,7 +31,7 @@ const shader = /*wgsl*/`
     let x = pos.x + align;
     let y = pos.y + align;
 
-    return u32(y * f32(globals.size) + x);
+    return u32(i32(y) * globals.size + i32(x));
   }
 
   @compute @workgroup_size(64)
