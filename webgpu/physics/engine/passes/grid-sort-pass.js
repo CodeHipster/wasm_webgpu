@@ -26,12 +26,11 @@ const shader = /*wgsl*/`
     // To move from signed ints to unsigned ints, add half the width
     // TODO: optimize, avoid division
     // TODO: avoid casting
-    let align = f32(globals.size / 2);
+    let align = globals.size / 2;
+    let y = i32(pos.y) + align;
+    let x = i32(pos.x) + align;
 
-    let x = pos.x + align;
-    let y = pos.y + align;
-
-    return u32(i32(y) * globals.size + i32(x));
+    return u32(y * globals.size + x);
   }
 
   @compute @workgroup_size(64)

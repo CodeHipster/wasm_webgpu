@@ -29,7 +29,7 @@ const shader = /* wgsl */`
     p.prev_position = temp;
 
     // Apply boundary constraints (keep particles inside a the box)
-    p.position = clamp(p.position, vec2f(f32(globals.min) + 0.5), vec2f(f32(globals.max) - 0.5)); // keep half a pixel away from border
+    p.position = clamp(p.position, vec2f(f32(globals.min) + 1), vec2f(f32(globals.max) - 1)); // keep half a pixel away from border
 
     particles[i] = p;
   }

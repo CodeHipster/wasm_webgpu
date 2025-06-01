@@ -9,7 +9,7 @@ const shader = /*wgsl*/`
   // Storage Buffers
   @group(0) @binding(0) var<storage, read_write> particles: array<Particle>; 
   @group(0) @binding(1) var<uniform> globals: GlobalVars;
-  @group(0) @binding(2) var<storage, read_write> grid: array<u32>; // Stores particle indices
+  @group(0) @binding(2) var<storage, read_write> grid: array<u32>; // Stores particle indices, up to 30 per cell
   @group(0) @binding(3) var<storage, read_write> grid_count: array<atomic<u32>>; // Particle count per cell
   @group(0) @binding(5) var<storage, read_write> collision_count: atomic<u32>; 
 
@@ -67,18 +67,18 @@ const shader = /*wgsl*/`
     var neighbour = array<u32,270>();
     var count: u32 = 0;
     for (var i: u32 = 0; i < 9; i = i + 1) {
-      let grid_index = grid_position + offsets[i]; // grid position for the neighbouring cell
+      let grid_index_vec = grid_position + offsets[i]; // grid position for the neighbouring cell
 
       // Ensure the neighbor is within grid bounds
-      if (grid_index.x >= 0 && grid_index.x < globals.size && grid_index.y >= 0 && grid_index.y <globals.size) {
+      if (grid_index_vec.x >= 0 && grid_index_vec.x < globals.size && grid_index_vec.y >= 0 && grid_index_vec.y <globals.size) {
         
-        let count_index = arrayIndex(grid_index);  // index of count array, which has just 1 u32 for each cell.
-        let grid_index = arrayIndexOffset(count_index); // index in the grid array which has index * 30 per cell.
+        let count_index = arrayIndex(grid_index_vec);  // index of count array, which has just 1 u32 for each cell.
+        let flat_grid_index = arrayIndexOffset(count_index); // index in the grid array which has index * 30 per cell.
         let n_count = atomicLoad(&grid_count[count_index]); // Loading atomic value here does not cause a problem, as the grid is not modified in this pass.
           
         // fetch count of neighbours
         for (var c: u32 = 0; c < n_count; c = c + 1) {
-          let n_index = grid[grid_index + c];
+          let n_index = grid[flat_grid_index + c];
           neighbour[count] = n_index;
           count = count + 1;
         }
